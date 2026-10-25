@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { add } from './utils'
+import { add } from '@/utils'
 
 describe('add', () => {
   it('sums two numbers', () => {
