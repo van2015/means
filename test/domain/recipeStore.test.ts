@@ -61,4 +61,23 @@ describe('createRecipe', () => {
     expect(getRecipes()).toHaveLength(0)
     expect(getGoods()).toHaveLength(0)
   })
+
+  it('rejects quantities less than or equal to zero', () => {
+    const result = createRecipe({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 0 }],
+      outputs: [{ goodName: 'Pan', quantity: -1 }],
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toEqual([
+        { code: 'INVALID_QUANTITY', goodName: 'Harina' },
+        { code: 'INVALID_QUANTITY', goodName: 'Pan' },
+      ])
+    }
+
+    expect(getRecipes()).toHaveLength(0)
+    expect(getGoods()).toHaveLength(0)
+  })
 })

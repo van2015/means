@@ -24,6 +24,7 @@ export type CreateRecipeInput = {
 export type RecipeError =
   | { code: 'NO_INPUTS' }
   | { code: 'NO_OUTPUTS' }
+  | { code: 'INVALID_QUANTITY'; goodName: string }
 
 export type RecipeResult =
   | { ok: true; recipe: Recipe }
@@ -65,6 +66,17 @@ export function createRecipe(input: CreateRecipeInput): RecipeResult {
   }
   if (input.outputs.length === 0) {
     errors.push({ code: 'NO_OUTPUTS' })
+  }
+
+  for (const line of input.inputs) {
+    if (line.quantity <= 0) {
+      errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
+    }
+  }
+  for (const line of input.outputs) {
+    if (line.quantity <= 0) {
+      errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
+    }
   }
 
   if (errors.length > 0) {
