@@ -1,0 +1,25 @@
+# AGENTS.md
+
+## Project overview
+
+**Means** is a crafting/economy simulation game application. A single user switches between a design mode and a play mode:
+
+- **Design mode:** create and manage goods, services, recipes, agents, agent-specific recipes and automatic rules.
+- **Play mode:** the player has no personal inventory; they own one agent at a time (or none) and manually control the possessed agent. The rest of the agents keep running their automatic rules in the background.
+- **Import/Export:** users can export and import selections of world data.
+
+The full backlog and detailed user stories live in [/docs/backlog.md](/docs/backlog.md).
+
+## Stack
+
+- **Language:** TypeScript
+- **Frontend tooling:** Vite
+- **Testing:** Vitest
+- **Target full-stack stack:** React + Node.js + SQLite (see backlog)
+
+## Commands
+
+- `npm run dev` — start Vite dev server
+- `npm run build` — type-check and build for production
+- `npm run test` — run tests in watch mode
+- `npm run test:run` — run tests once
