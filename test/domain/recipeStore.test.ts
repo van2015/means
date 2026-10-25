@@ -7,11 +7,13 @@ describe('createRecipe', () => {
   })
 
   it('saves a valid recipe with name, inputs and outputs', () => {
-    createRecipe({
+    const result = createRecipe({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
     })
+
+    expect(result.ok).toBe(true)
 
     const recipes = getRecipes()
     expect(recipes).toHaveLength(1)
@@ -29,26 +31,32 @@ describe('createRecipe', () => {
   })
 
   it('rejects a recipe without inputs', () => {
-    expect(() =>
-      createRecipe({
-        name: 'Pan',
-        inputs: [],
-        outputs: [{ goodName: 'Pan', quantity: 1 }],
-      }),
-    ).toThrow('Recipe must have at least one input')
+    const result = createRecipe({
+      name: 'Pan',
+      inputs: [],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toEqual([{ code: 'NO_INPUTS' }])
+    }
 
     expect(getRecipes()).toHaveLength(0)
     expect(getGoods()).toHaveLength(0)
   })
 
   it('rejects a recipe without outputs', () => {
-    expect(() =>
-      createRecipe({
-        name: 'Pan',
-        inputs: [{ goodName: 'Harina', quantity: 2 }],
-        outputs: [],
-      }),
-    ).toThrow('Recipe must have at least one output')
+    const result = createRecipe({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [],
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toEqual([{ code: 'NO_OUTPUTS' }])
+    }
 
     expect(getRecipes()).toHaveLength(0)
     expect(getGoods()).toHaveLength(0)

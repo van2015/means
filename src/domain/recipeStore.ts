@@ -21,6 +21,14 @@ export type CreateRecipeInput = {
   outputs: { goodName: string; quantity: number }[]
 }
 
+export type RecipeError =
+  | { code: 'NO_INPUTS' }
+  | { code: 'NO_OUTPUTS' }
+
+export type RecipeResult =
+  | { ok: true; recipe: Recipe }
+  | { ok: false; errors: RecipeError[] }
+
 let goods: Good[] = []
 let recipes: Recipe[] = []
 
@@ -49,12 +57,18 @@ function findOrCreateGood(name: string): Good {
   return created
 }
 
-export function createRecipe(input: CreateRecipeInput): Recipe {
+export function createRecipe(input: CreateRecipeInput): RecipeResult {
+  const errors: RecipeError[] = []
+
   if (input.inputs.length === 0) {
-    throw new Error('Recipe must have at least one input')
+    errors.push({ code: 'NO_INPUTS' })
   }
   if (input.outputs.length === 0) {
-    throw new Error('Recipe must have at least one output')
+    errors.push({ code: 'NO_OUTPUTS' })
+  }
+
+  if (errors.length > 0) {
+    return { ok: false, errors }
   }
 
   const recipe: Recipe = {
@@ -71,5 +85,5 @@ export function createRecipe(input: CreateRecipeInput): Recipe {
   }
 
   recipes.push(recipe)
-  return recipe
+  return { ok: true, recipe }
 }
