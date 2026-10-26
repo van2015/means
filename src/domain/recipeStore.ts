@@ -75,4 +75,6 @@ function generateId(): string {
   return Math.random().toString(36).slice(2)
 }
 
+export const recipeStore = new RecipeStore()
+
 export type { DraftLine, Good, Recipe, RecipeDraft, RecipeError, RecipeLine, RecipeResult } from './recipe'

@@ -1,0 +1,53 @@
+export type LineDraft = {
+  goodName: string
+  quantity: string
+}
+
+type RecipeLineFormProps = {
+  legend: string
+  lineLabel: string
+  addButtonLabel: string
+  lines: LineDraft[]
+  onAdd: () => void
+  onUpdate: (index: number, field: keyof LineDraft, value: string) => void
+}
+
+export function RecipeLineForm({
+  legend,
+  lineLabel,
+  addButtonLabel,
+  lines,
+  onAdd,
+  onUpdate,
+}: RecipeLineFormProps) {
+  return (
+    <fieldset>
+      <legend>{legend}</legend>
+      {lines.map((line, index) => (
+        <div key={index}>
+          <label>
+            Nombre del {lineLabel} {index + 1}
+            <input
+              value={line.goodName}
+              onChange={(event) =>
+                onUpdate(index, 'goodName', event.target.value)
+              }
+            />
+          </label>
+          <label>
+            Cantidad del {lineLabel} {index + 1}
+            <input
+              value={line.quantity}
+              onChange={(event) =>
+                onUpdate(index, 'quantity', event.target.value)
+              }
+            />
+          </label>
+        </div>
+      ))}
+      <button type="button" onClick={onAdd}>
+        Agregar {addButtonLabel}
+      </button>
+    </fieldset>
+  )
+}
