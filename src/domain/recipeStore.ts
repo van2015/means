@@ -1,101 +1,100 @@
-export type Good = {
-  id: string
-  name: string
+import { createRecipeEntity, validateRecipe } from './recipe'
+import type { DraftLine, Good, Recipe, RecipeResult } from './recipe'
+
+class RecipeStore {
+  private goods: Good[] = []
+  private recipes: Recipe[] = []
+
+  reset(): void {
+    this.goods = []
+    this.recipes = []
+  }
+
+  getGoods(): Good[] {
+    return this.goods
+  }
+
+  getRecipes(): Recipe[] {
+    return this.recipes
+  }
+
+  hasGoodNamed(name: string): boolean {
+    return this.goods.some((g) => g.name === name)
+  }
+
+  findGoodIdByName(name: string): string | undefined {
+    return this.goods.find((g) => g.name === name)?.id
+  }
+
+  createRecipe(
+    name: string,
+    inputs: DraftLine[],
+    outputs: DraftLine[],
+  ): RecipeResult {
+    const errors = validateRecipe(inputs, outputs)
+
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const recipe = createRecipeEntity(
+      generateId(),
+      name,
+      inputs.map((line) => ({
+        goodId: this.findOrCreateGood(line.goodName).id,
+        quantity: line.quantity,
+      })),
+      outputs.map((line) => ({
+        goodId: this.findOrCreateGood(line.goodName).id,
+        quantity: line.quantity,
+      })),
+    )
+
+    this.recipes.push(recipe)
+    return { ok: true, recipe }
+  }
+
+  private findOrCreateGood(name: string): Good {
+    const existing = this.goods.find((g) => g.name === name)
+    if (existing) return existing
+    const created: Good = { id: generateId(), name }
+    this.goods.push(created)
+    return created
+  }
 }
 
-export type RecipeLine = {
-  goodId: string
-  quantity: number
-}
-
-export type Recipe = {
-  id: string
-  name: string
-  inputs: RecipeLine[]
-  outputs: RecipeLine[]
-}
-
-export type CreateRecipeInput = {
-  name: string
-  inputs: { goodName: string; quantity: number }[]
-  outputs: { goodName: string; quantity: number }[]
-}
-
-export type RecipeError =
-  | { code: 'NO_INPUTS' }
-  | { code: 'NO_OUTPUTS' }
-  | { code: 'INVALID_QUANTITY'; goodName: string }
-
-export type RecipeResult =
-  | { ok: true; recipe: Recipe }
-  | { ok: false; errors: RecipeError[] }
-
-let goods: Good[] = []
-let recipes: Recipe[] = []
-
-export function resetStore(): void {
-  goods = []
-  recipes = []
-}
-
-export function getGoods(): Good[] {
-  return goods
-}
-
-export function getRecipes(): Recipe[] {
-  return recipes
-}
+const store = new RecipeStore()
 
 function generateId(): string {
   return Math.random().toString(36).slice(2)
 }
 
-function findOrCreateGood(name: string): Good {
-  const existing = goods.find((g) => g.name === name)
-  if (existing) return existing
-  const created: Good = { id: generateId(), name }
-  goods.push(created)
-  return created
+export function resetStore(): void {
+  store.reset()
 }
 
-export function createRecipe(input: CreateRecipeInput): RecipeResult {
-  const errors: RecipeError[] = []
-
-  if (input.inputs.length === 0) {
-    errors.push({ code: 'NO_INPUTS' })
-  }
-  if (input.outputs.length === 0) {
-    errors.push({ code: 'NO_OUTPUTS' })
-  }
-
-  for (const line of input.inputs) {
-    if (line.quantity <= 0) {
-      errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
-    }
-  }
-  for (const line of input.outputs) {
-    if (line.quantity <= 0) {
-      errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
-    }
-  }
-
-  if (errors.length > 0) {
-    return { ok: false, errors }
-  }
-
-  const recipe: Recipe = {
-    id: generateId(),
-    name: input.name,
-    inputs: input.inputs.map((line) => ({
-      goodId: findOrCreateGood(line.goodName).id,
-      quantity: line.quantity,
-    })),
-    outputs: input.outputs.map((line) => ({
-      goodId: findOrCreateGood(line.goodName).id,
-      quantity: line.quantity,
-    })),
-  }
-
-  recipes.push(recipe)
-  return { ok: true, recipe }
+export function getGoods(): Good[] {
+  return store.getGoods()
 }
+
+export function getRecipes(): Recipe[] {
+  return store.getRecipes()
+}
+
+export function hasGoodNamed(name: string): boolean {
+  return store.hasGoodNamed(name)
+}
+
+export function findGoodIdByName(name: string): string | undefined {
+  return store.findGoodIdByName(name)
+}
+
+export function createRecipe(
+  name: string,
+  inputs: DraftLine[],
+  outputs: DraftLine[],
+): RecipeResult {
+  return store.createRecipe(name, inputs, outputs)
+}
+
+export type { DraftLine, Good, Recipe, RecipeError, RecipeLine, RecipeResult } from './recipe'
