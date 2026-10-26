@@ -1,8 +1,4 @@
-export type RecipeDraft = {
-  name: string
-  inputs: { goodName: string; quantity: number }[]
-  outputs: { goodName: string; quantity: number }[]
-}
+import type { RecipeDraft } from '@/domain/recipe'
 
 export class RecipeBuilder {
   private name = 'Default recipe'

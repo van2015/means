@@ -13,6 +13,12 @@ export type DraftLine = {
   quantity: number
 }
 
+export type RecipeDraft = {
+  name: string
+  inputs: DraftLine[]
+  outputs: DraftLine[]
+}
+
 export type RecipeError =
   | { code: 'NO_INPUTS' }
   | { code: 'NO_OUTPUTS' }
@@ -21,12 +27,6 @@ export type RecipeError =
 export type RecipeResult =
   | { ok: true; recipe: Recipe }
   | { ok: false; errors: RecipeError[] }
-
-function findGoodName(goodId: string, goods: Good[]): string {
-  const good = goods.find((g) => g.id === goodId)
-  if (!good) throw new Error(`Good with id ${goodId} not found`)
-  return good.name
-}
 
 export class Recipe {
   readonly id: string
@@ -41,16 +41,24 @@ export class Recipe {
     this.outputs = outputs
   }
 
-  hasInput(goodName: string, quantity: number, goods: Good[]): boolean {
+  consumes(good: Good, quantity: number): boolean {
     return this.inputs.some(
-      (line) => findGoodName(line.goodId, goods) === goodName && line.quantity === quantity,
+      (line) => line.goodId === good.id && line.quantity === quantity,
     )
   }
 
-  hasOutput(goodName: string, quantity: number, goods: Good[]): boolean {
+  produces(good: Good, quantity: number): boolean {
     return this.outputs.some(
-      (line) => findGoodName(line.goodId, goods) === goodName && line.quantity === quantity,
+      (line) => line.goodId === good.id && line.quantity === quantity,
     )
+  }
+
+  usesGoodAsInput(goodId: string): boolean {
+    return this.inputs.some((line) => line.goodId === goodId)
+  }
+
+  usesGoodAsOutput(goodId: string): boolean {
+    return this.outputs.some((line) => line.goodId === goodId)
   }
 }
 

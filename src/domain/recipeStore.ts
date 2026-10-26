@@ -1,7 +1,7 @@
 import { createRecipeEntity, validateRecipe } from './recipe'
-import type { DraftLine, Good, Recipe, RecipeResult } from './recipe'
+import type { Good, Recipe, RecipeDraft, RecipeResult } from './recipe'
 
-class RecipeStore {
+export class RecipeStore {
   private goods: Good[] = []
   private recipes: Recipe[] = []
 
@@ -18,6 +18,10 @@ class RecipeStore {
     return this.recipes
   }
 
+  recipeCount(): number {
+    return this.recipes.length
+  }
+
   hasGoodNamed(name: string): boolean {
     return this.goods.some((g) => g.name === name)
   }
@@ -26,12 +30,16 @@ class RecipeStore {
     return this.goods.find((g) => g.name === name)?.id
   }
 
-  createRecipe(
-    name: string,
-    inputs: DraftLine[],
-    outputs: DraftLine[],
-  ): RecipeResult {
-    const errors = validateRecipe(inputs, outputs)
+  getGood(id: string): Good | undefined {
+    return this.goods.find((g) => g.id === id)
+  }
+
+  findRecipeByName(name: string): Recipe | undefined {
+    return this.recipes.find((r) => r.name === name)
+  }
+
+  createRecipe(draft: RecipeDraft): RecipeResult {
+    const errors = validateRecipe(draft.inputs, draft.outputs)
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -39,12 +47,12 @@ class RecipeStore {
 
     const recipe = createRecipeEntity(
       generateId(),
-      name,
-      inputs.map((line) => ({
+      draft.name,
+      draft.inputs.map((line) => ({
         goodId: this.findOrCreateGood(line.goodName).id,
         quantity: line.quantity,
       })),
-      outputs.map((line) => ({
+      draft.outputs.map((line) => ({
         goodId: this.findOrCreateGood(line.goodName).id,
         quantity: line.quantity,
       })),
@@ -63,38 +71,8 @@ class RecipeStore {
   }
 }
 
-const store = new RecipeStore()
-
 function generateId(): string {
   return Math.random().toString(36).slice(2)
 }
 
-export function resetStore(): void {
-  store.reset()
-}
-
-export function getGoods(): Good[] {
-  return store.getGoods()
-}
-
-export function getRecipes(): Recipe[] {
-  return store.getRecipes()
-}
-
-export function hasGoodNamed(name: string): boolean {
-  return store.hasGoodNamed(name)
-}
-
-export function findGoodIdByName(name: string): string | undefined {
-  return store.findGoodIdByName(name)
-}
-
-export function createRecipe(
-  name: string,
-  inputs: DraftLine[],
-  outputs: DraftLine[],
-): RecipeResult {
-  return store.createRecipe(name, inputs, outputs)
-}
-
-export type { DraftLine, Good, Recipe, RecipeError, RecipeLine, RecipeResult } from './recipe'
+export type { DraftLine, Good, Recipe, RecipeDraft, RecipeError, RecipeLine, RecipeResult } from './recipe'
