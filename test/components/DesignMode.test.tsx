@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DesignMode } from '@/react/DesignMode'
+import { agentStore } from '@/domain/agentStore'
+import { goodStore } from '@/domain/goodStore'
 import { recipeStore } from '@/domain/recipeStore'
 
 function withinRecipeCatalog() {
@@ -10,7 +12,9 @@ function withinRecipeCatalog() {
 
 describe('DesignMode', () => {
   beforeEach(() => {
+    goodStore.reset()
     recipeStore.reset()
+    agentStore.reset()
   })
 
   it('renders a recipe form with inputs, outputs and save', () => {
@@ -45,7 +49,7 @@ describe('DesignMode', () => {
   })
 
   it('loads a recipe into the form when clicking edit', async () => {
-    recipeStore.createRecipe({
+    recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
@@ -63,7 +67,7 @@ describe('DesignMode', () => {
   })
 
   it('saves edited recipe and shows updated data in the catalog', async () => {
-    recipeStore.createRecipe({
+    recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
@@ -83,7 +87,7 @@ describe('DesignMode', () => {
   })
 
   it('deletes a recipe and it disappears from the catalog', async () => {
-    recipeStore.createRecipe({
+    recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
@@ -98,7 +102,7 @@ describe('DesignMode', () => {
   })
 
   it('shows validation errors when editing an invalid recipe and does not update the catalog', async () => {
-    recipeStore.createRecipe({
+    recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
@@ -144,7 +148,7 @@ describe('DesignMode', () => {
 
   it('lets the user pick an existing good when adding a recipe line', async () => {
     const user = userEvent.setup()
-    recipeStore.createGood('Harina')
+    goodStore.create('Harina')
 
     render(<DesignMode />)
 
@@ -171,7 +175,7 @@ describe('DesignMode', () => {
     expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText(/pan: 1/i)).toBeInTheDocument()
 
-    const harinaGoods = recipeStore.getGoods().filter((good) => good.name === 'Harina')
+    const harinaGoods = goodStore.all().filter((good) => good.name === 'Harina')
     expect(harinaGoods).toHaveLength(1)
   })
 
@@ -203,7 +207,7 @@ describe('DesignMode', () => {
   })
 
   it('displays existing agents with their name and initial inventory', () => {
-    recipeStore.createAgent({
+    agentStore.create({
       name: 'Panadero',
       inventory: [{ goodName: 'Harina', quantity: 10 }],
     })

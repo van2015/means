@@ -1,4 +1,4 @@
-import { recipeStore } from '@/domain/recipeStore'
+import { AgentCatalog } from './AgentCatalog'
 import { RecipeCatalog } from './RecipeCatalog'
 import { RecipeLineForm } from './RecipeLineForm'
 import { ValidationErrors } from './ValidationErrors'
@@ -46,7 +46,7 @@ export function DesignMode() {
       <ValidationErrors errors={presenter.errors} />
       <RecipeCatalog
         recipes={presenter.recipes}
-        store={recipeStore}
+        goods={presenter.goods}
         onEdit={presenter.startEdit}
         onDelete={presenter.deleteRecipe}
       />
@@ -99,26 +99,7 @@ export function DesignMode() {
         </form>
         <ValidationErrors errors={presenter.agentErrors} />
       </section>
-      <section>
-        <h3>Catálogo de agentes</h3>
-        <ul>
-          {presenter.agents.map((agent) => (
-            <li key={agent.id}>
-              {agent.name}
-              <ul>
-                {agent.inventory.map((line, index) => {
-                  const good = recipeStore.getGood(line.goodId)
-                  return (
-                    <li key={index}>
-                      {good?.name}: {line.quantity}
-                    </li>
-                  )
-                })}
-              </ul>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <AgentCatalog agents={presenter.agents} goods={presenter.goods} />
     </div>
   )
 }

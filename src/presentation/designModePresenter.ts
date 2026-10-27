@@ -1,5 +1,9 @@
+import { agentStore } from '@/domain/agentStore'
+import type { Agent, AgentError } from '@/domain/agentStore'
+import { goodStore } from '@/domain/goodStore'
+import type { Good } from '@/domain/goodStore'
 import { recipeStore } from '@/domain/recipeStore'
-import type { Agent, AgentError, Good, Recipe, RecipeError } from '@/domain/recipeStore'
+import type { Recipe, RecipeError } from '@/domain/recipeStore'
 
 export type LineDraft = {
   goodName: string
@@ -10,16 +14,16 @@ export class DesignModePresenter {
   private nameValue = ''
   private inputsValue: LineDraft[] = []
   private outputsValue: LineDraft[] = []
-  private recipesValue = recipeStore.getRecipes()
+  private recipesValue = recipeStore.all()
   private errorsValue: RecipeError[] = []
   private editingIdValue: string | null = null
   private goodNameValue = ''
-  private goodsValue = recipeStore.getGoods()
+  private goodsValue = goodStore.all()
   private goodErrorValue: string | null = null
   private agentNameValue = ''
   private agentInventoryValue: LineDraft[] = []
   private agentErrorsValue: AgentError[] = []
-  private agentsValue = recipeStore.getAgents()
+  private agentsValue = agentStore.all()
   private listeners = new Set<() => void>()
 
   get name(): string {
@@ -113,8 +117,8 @@ export class DesignModePresenter {
   }
 
   deleteRecipe(id: string): void {
-    recipeStore.deleteRecipe(id)
-    this.recipesValue = recipeStore.getRecipes()
+    recipeStore.delete(id)
+    this.recipesValue = recipeStore.all()
     this.notify()
   }
 
@@ -122,11 +126,11 @@ export class DesignModePresenter {
     this.editingIdValue = recipe.id
     this.nameValue = recipe.name
     this.inputsValue = recipe.inputs.map((line) => ({
-      goodName: recipeStore.getGood(line.goodId)?.name ?? '',
+      goodName: goodStore.get(line.goodId)?.name ?? '',
       quantity: String(line.quantity),
     }))
     this.outputsValue = recipe.outputs.map((line) => ({
-      goodName: recipeStore.getGood(line.goodId)?.name ?? '',
+      goodName: goodStore.get(line.goodId)?.name ?? '',
       quantity: String(line.quantity),
     }))
     this.notify()
@@ -146,12 +150,12 @@ export class DesignModePresenter {
     }
 
     const result = this.editingIdValue
-      ? recipeStore.updateRecipe(this.editingIdValue, draft)
-      : recipeStore.createRecipe(draft)
+      ? recipeStore.update(this.editingIdValue, draft)
+      : recipeStore.create(draft)
 
     if (result.ok) {
-      this.recipesValue = recipeStore.getRecipes()
-      this.goodsValue = recipeStore.getGoods()
+      this.recipesValue = recipeStore.all()
+      this.goodsValue = goodStore.all()
       this.nameValue = ''
       this.inputsValue = []
       this.outputsValue = []
@@ -170,9 +174,9 @@ export class DesignModePresenter {
   }
 
   registerGood(): void {
-    const result = recipeStore.createGood(this.goodNameValue)
+    const result = goodStore.create(this.goodNameValue)
     if (result.ok) {
-      this.goodsValue = recipeStore.getGoods()
+      this.goodsValue = goodStore.all()
       this.goodNameValue = ''
       this.goodErrorValue = null
     } else {
@@ -199,7 +203,7 @@ export class DesignModePresenter {
   }
 
   submitAgent(): void {
-    const result = recipeStore.createAgent({
+    const result = agentStore.create({
       name: this.agentNameValue,
       inventory: this.agentInventoryValue.map((line) => ({
         goodName: line.goodName,
@@ -208,8 +212,8 @@ export class DesignModePresenter {
     })
 
     if (result.ok) {
-      this.agentsValue = recipeStore.getAgents()
-      this.goodsValue = recipeStore.getGoods()
+      this.agentsValue = agentStore.all()
+      this.goodsValue = goodStore.all()
       this.agentNameValue = ''
       this.agentInventoryValue = []
       this.agentErrorsValue = []

@@ -1,74 +1,33 @@
 import { createRecipeEntity, validateRecipe } from './recipe'
-import type { Good, Recipe, RecipeDraft, RecipeResult } from './recipe'
-import { Agent } from './agent'
-import type { DraftLine } from './recipe'
-
-type CreateGoodResult =
-  | { ok: true; good: Good }
-  | { ok: false; error: 'EMPTY_NAME' }
-
-type AgentError =
-  | { code: 'EMPTY_NAME' }
-  | { code: 'INVALID_QUANTITY'; goodName: string }
-
-type AgentResult =
-  | { ok: true; agent: Agent }
-  | { ok: false; errors: AgentError[] }
-
-type AgentDraft = {
-  name: string
-  inventory: DraftLine[]
-}
+import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
+import type { GoodStore } from './goodStore'
+import { goodStore } from './goodStore'
 
 export class RecipeStore {
-  private goods: Good[] = []
   private recipes: Recipe[] = []
-  private agents: Agent[] = []
+  private goodStore: GoodStore
+
+  constructor(goodStore: GoodStore) {
+    this.goodStore = goodStore
+  }
 
   reset(): void {
-    this.goods = []
     this.recipes = []
-    this.agents = []
   }
 
-  getGoods(): Good[] {
-    return this.goods
-  }
-
-  getRecipes(): Recipe[] {
+  all(): Recipe[] {
     return this.recipes
   }
 
-  recipeCount(): number {
+  count(): number {
     return this.recipes.length
   }
 
-  hasGoodNamed(name: string): boolean {
-    return this.goods.some((g) => g.name === name)
-  }
-
-  findGoodIdByName(name: string): string | undefined {
-    return this.goods.find((g) => g.name === name)?.id
-  }
-
-  getGood(id: string): Good | undefined {
-    return this.goods.find((g) => g.id === id)
-  }
-
-  createGood(name: string): CreateGoodResult {
-    if (name.trim() === '') {
-      return { ok: false, error: 'EMPTY_NAME' }
-    }
-
-    const good = this.findOrCreateGood(name)
-    return { ok: true, good }
-  }
-
-  findRecipeByName(name: string): Recipe | undefined {
+  findByName(name: string): Recipe | undefined {
     return this.recipes.find((r) => r.name === name)
   }
 
-  createRecipe(draft: RecipeDraft): RecipeResult {
+  create(draft: RecipeDraft): RecipeResult {
     const errors = validateRecipe(draft.inputs, draft.outputs)
 
     if (errors.length > 0) {
@@ -80,7 +39,7 @@ export class RecipeStore {
     return { ok: true, recipe }
   }
 
-  updateRecipe(id: string, draft: RecipeDraft): RecipeResult {
+  update(id: string, draft: RecipeDraft): RecipeResult {
     const errors = validateRecipe(draft.inputs, draft.outputs)
 
     if (errors.length > 0) {
@@ -97,49 +56,8 @@ export class RecipeStore {
     return { ok: true, recipe }
   }
 
-  deleteRecipe(id: string): void {
+  delete(id: string): void {
     this.recipes = this.recipes.filter((recipe) => recipe.id !== id)
-  }
-
-  agentCount(): number {
-    return this.agents.length
-  }
-
-  getAgents(): Agent[] {
-    return this.agents
-  }
-
-  findAgentByName(name: string): Agent | undefined {
-    return this.agents.find((a) => a.name === name)
-  }
-
-  createAgent(draft: AgentDraft): AgentResult {
-    const errors: AgentError[] = []
-
-    if (draft.name.trim() === '') {
-      errors.push({ code: 'EMPTY_NAME' })
-    }
-
-    for (const line of draft.inventory) {
-      if (line.quantity <= 0) {
-        errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
-      }
-    }
-
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
-    const agent = new Agent(
-      generateId(),
-      draft.name,
-      draft.inventory.map((line) => ({
-        goodId: this.findOrCreateGood(line.goodName).id,
-        quantity: line.quantity,
-      })),
-    )
-    this.agents.push(agent)
-    return { ok: true, agent }
   }
 
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
@@ -147,22 +65,14 @@ export class RecipeStore {
       id,
       draft.name,
       draft.inputs.map((line) => ({
-        goodId: this.findOrCreateGood(line.goodName).id,
+        goodId: this.goodStore.resolve(line.goodName).id,
         quantity: line.quantity,
       })),
       draft.outputs.map((line) => ({
-        goodId: this.findOrCreateGood(line.goodName).id,
+        goodId: this.goodStore.resolve(line.goodName).id,
         quantity: line.quantity,
       })),
     )
-  }
-
-  private findOrCreateGood(name: string): Good {
-    const existing = this.goods.find((g) => g.name === name)
-    if (existing) return existing
-    const created: Good = { id: generateId(), name }
-    this.goods.push(created)
-    return created
   }
 }
 
@@ -170,6 +80,6 @@ function generateId(): string {
   return Math.random().toString(36).slice(2)
 }
 
-export const recipeStore = new RecipeStore()
+export const recipeStore = new RecipeStore(goodStore)
 
 export type { DraftLine, Good, Recipe, RecipeDraft, RecipeError, RecipeLine, RecipeResult } from './recipe'

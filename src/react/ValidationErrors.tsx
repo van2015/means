@@ -1,4 +1,5 @@
-import type { AgentError, RecipeError } from '@/domain/recipeStore'
+import type { AgentError } from '@/domain/agent'
+import type { RecipeError } from '@/domain/recipeStore'
 
 type ValidationError = RecipeError | AgentError
 

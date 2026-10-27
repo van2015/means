@@ -1,20 +1,21 @@
-import type { Recipe, RecipeStore } from '@/domain/recipeStore'
+import type { Recipe } from '@/domain/recipeStore'
+import type { Good } from '@/domain/goodStore'
 
 type RecipeCatalogProps = {
   recipes: Recipe[]
-  store: RecipeStore
+  goods: Good[]
   onEdit: (recipe: Recipe) => void
   onDelete: (id: string) => void
 }
 
 type RecipeCatalogItemProps = {
   recipe: Recipe
-  store: RecipeStore
+  goods: Good[]
   onEdit: (recipe: Recipe) => void
   onDelete: (id: string) => void
 }
 
-function RecipeCatalogItem({ recipe, store, onEdit, onDelete }: RecipeCatalogItemProps) {
+function RecipeCatalogItem({ recipe, goods, onEdit, onDelete }: RecipeCatalogItemProps) {
   return (
     <li>
       {recipe.name}
@@ -26,7 +27,7 @@ function RecipeCatalogItem({ recipe, store, onEdit, onDelete }: RecipeCatalogIte
       </button>
       <ul>
         {recipe.inputs.map((line, index) => {
-          const good = store.getGood(line.goodId)
+          const good = goods.find((g) => g.id === line.goodId)
           return (
             <li key={index}>
               Insumo: {good?.name}: {line.quantity}
@@ -34,7 +35,7 @@ function RecipeCatalogItem({ recipe, store, onEdit, onDelete }: RecipeCatalogIte
           )
         })}
         {recipe.outputs.map((line, index) => {
-          const good = store.getGood(line.goodId)
+          const good = goods.find((g) => g.id === line.goodId)
           return (
             <li key={index}>
               Producto: {good?.name}: {line.quantity}
@@ -46,7 +47,7 @@ function RecipeCatalogItem({ recipe, store, onEdit, onDelete }: RecipeCatalogIte
   )
 }
 
-export function RecipeCatalog({ recipes, store, onEdit, onDelete }: RecipeCatalogProps) {
+export function RecipeCatalog({ recipes, goods, onEdit, onDelete }: RecipeCatalogProps) {
   return (
     <section>
       <h3>Catálogo de recetas</h3>
@@ -55,7 +56,7 @@ export function RecipeCatalog({ recipes, store, onEdit, onDelete }: RecipeCatalo
           <RecipeCatalogItem
             key={recipe.id}
             recipe={recipe}
-            store={store}
+            goods={goods}
             onEdit={onEdit}
             onDelete={onDelete}
           />

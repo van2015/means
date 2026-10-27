@@ -1,16 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest'
+import { GoodStore } from '@/domain/goodStore'
 import { RecipeStore } from '@/domain/recipeStore'
 import { RecipeBuilder } from '../helpers/recipeBuilder'
 
 describe('RecipeStore', () => {
+  let goodStore: GoodStore
   let store: RecipeStore
 
   beforeEach(() => {
-    store = new RecipeStore()
+    goodStore = new GoodStore()
+    store = new RecipeStore(goodStore)
   })
 
   it('saves a valid recipe with name, inputs and outputs', () => {
-    const result = store.createRecipe(
+    const result = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -19,19 +22,19 @@ describe('RecipeStore', () => {
     )
 
     expect(result.ok).toBe(true)
-    expect(store.recipeCount()).toBe(1)
+    expect(store.count()).toBe(1)
 
-    const recipe = store.findRecipeByName('Pan')
+    const recipe = store.findByName('Pan')
     expect(recipe).toBeDefined()
 
-    const flourId = store.findGoodIdByName('Harina')
-    const breadId = store.findGoodIdByName('Pan')
+    const flourId = goodStore.findIdByName('Harina')
+    const breadId = goodStore.findIdByName('Pan')
     expect(flourId).toBeDefined()
     expect(breadId).toBeDefined()
 
     if (recipe && flourId && breadId) {
-      const flour = store.getGood(flourId)
-      const bread = store.getGood(breadId)
+      const flour = goodStore.get(flourId)
+      const bread = goodStore.get(breadId)
       expect(flour).toBeDefined()
       expect(bread).toBeDefined()
 
@@ -43,7 +46,7 @@ describe('RecipeStore', () => {
   })
 
   it('rejects a recipe without inputs', () => {
-    const result = store.createRecipe(
+    const result = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withOutput('Pan', 1)
@@ -55,11 +58,11 @@ describe('RecipeStore', () => {
       expect(result.errors).toEqual([{ code: 'NO_INPUTS' }])
     }
 
-    expect(store.recipeCount()).toBe(0)
+    expect(store.count()).toBe(0)
   })
 
   it('rejects a recipe without outputs', () => {
-    const result = store.createRecipe(
+    const result = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -71,11 +74,11 @@ describe('RecipeStore', () => {
       expect(result.errors).toEqual([{ code: 'NO_OUTPUTS' }])
     }
 
-    expect(store.recipeCount()).toBe(0)
+    expect(store.count()).toBe(0)
   })
 
   it('rejects quantities less than or equal to zero', () => {
-    const result = store.createRecipe(
+    const result = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 0)
@@ -91,11 +94,11 @@ describe('RecipeStore', () => {
       ])
     }
 
-    expect(store.recipeCount()).toBe(0)
+    expect(store.count()).toBe(0)
   })
 
   it('deleteRecipe removes the recipe from the catalog', () => {
-    const created = store.createRecipe(
+    const created = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -105,14 +108,14 @@ describe('RecipeStore', () => {
     expect(created.ok).toBe(true)
     if (!created.ok) return
 
-    store.deleteRecipe(created.recipe.id)
+    store.delete(created.recipe.id)
 
-    expect(store.recipeCount()).toBe(0)
-    expect(store.findRecipeByName('Pan')).toBeUndefined()
+    expect(store.count()).toBe(0)
+    expect(store.findByName('Pan')).toBeUndefined()
   })
 
-  it('updateRecipe rejects invalid drafts and leaves the original untouched', () => {
-    const created = store.createRecipe(
+  it('update rejects invalid drafts and leaves the original untouched', () => {
+    const created = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -122,7 +125,7 @@ describe('RecipeStore', () => {
     expect(created.ok).toBe(true)
     if (!created.ok) return
 
-    const result = store.updateRecipe(created.recipe.id, {
+    const result = store.update(created.recipe.id, {
       name: 'Pan invalido',
       inputs: [],
       outputs: [{ goodName: 'Pan', quantity: -1 }],
@@ -135,13 +138,13 @@ describe('RecipeStore', () => {
       { code: 'INVALID_QUANTITY', goodName: 'Pan' },
     ])
 
-    const original = store.findRecipeByName('Pan')
+    const original = store.findByName('Pan')
     expect(original).toBeDefined()
     expect(original?.id).toBe(created.recipe.id)
   })
 
   it('updates an existing recipe and keeps the same id', () => {
-    const created = store.createRecipe(
+    const created = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -151,7 +154,7 @@ describe('RecipeStore', () => {
     expect(created.ok).toBe(true)
     if (!created.ok) return
 
-    const result = store.updateRecipe(created.recipe.id, {
+    const result = store.update(created.recipe.id, {
       name: 'Pan integral',
       inputs: [{ goodName: 'Harina integral', quantity: 3 }],
       outputs: [{ goodName: 'Pan integral', quantity: 1 }],
@@ -163,14 +166,14 @@ describe('RecipeStore', () => {
     expect(result.recipe.id).toBe(created.recipe.id)
     expect(result.recipe.name).toBe('Pan integral')
 
-    const flourId = store.findGoodIdByName('Harina integral')
-    const breadId = store.findGoodIdByName('Pan integral')
+    const flourId = goodStore.findIdByName('Harina integral')
+    const breadId = goodStore.findIdByName('Pan integral')
     expect(flourId).toBeDefined()
     expect(breadId).toBeDefined()
 
     if (flourId && breadId) {
-      const flour = store.getGood(flourId)
-      const bread = store.getGood(breadId)
+      const flour = goodStore.get(flourId)
+      const bread = goodStore.get(breadId)
       expect(flour).toBeDefined()
       expect(bread).toBeDefined()
       if (flour && bread) {
@@ -179,33 +182,33 @@ describe('RecipeStore', () => {
       }
     }
 
-    const catalogRecipe = store.findRecipeByName('Pan integral')
+    const catalogRecipe = store.findByName('Pan integral')
     expect(catalogRecipe).toBeDefined()
     expect(catalogRecipe?.id).toBe(created.recipe.id)
   })
 
   it('createGood rejects empty names and leaves catalog unchanged', () => {
-    const result = store.createGood('')
+    const result = goodStore.create('')
 
     expect(result.ok).toBe(false)
     if (result.ok) return
     expect(result.error).toBe('EMPTY_NAME')
-    expect(store.getGoods()).toHaveLength(0)
+    expect(goodStore.all()).toHaveLength(0)
   })
 
   it('createGood adds a good to the catalog', () => {
-    const result = store.createGood('Harina')
+    const result = goodStore.create('Harina')
 
     expect(result.ok).toBe(true)
     if (!result.ok) return
 
     expect(result.good.name).toBe('Harina')
-    expect(store.hasGoodNamed('Harina')).toBe(true)
-    expect(store.getGoods()).toContainEqual(result.good)
+    expect(goodStore.hasNamed('Harina')).toBe(true)
+    expect(goodStore.all()).toContainEqual(result.good)
   })
 
   it('creates missing goods inline and links recipes to them', () => {
-    const first = store.createRecipe(
+    const first = store.create(
       RecipeBuilder.aRecipe()
         .named('Harina de trigo')
         .withInput('Trigo', 1)
@@ -214,7 +217,7 @@ describe('RecipeStore', () => {
     )
     expect(first.ok).toBe(true)
 
-    const second = store.createRecipe(
+    const second = store.create(
       RecipeBuilder.aRecipe()
         .named('Pan')
         .withInput('Harina', 2)
@@ -223,15 +226,15 @@ describe('RecipeStore', () => {
     )
     expect(second.ok).toBe(true)
 
-    expect(store.hasGoodNamed('Trigo')).toBe(true)
-    expect(store.hasGoodNamed('Harina')).toBe(true)
-    expect(store.hasGoodNamed('Pan')).toBe(true)
+    expect(goodStore.hasNamed('Trigo')).toBe(true)
+    expect(goodStore.hasNamed('Harina')).toBe(true)
+    expect(goodStore.hasNamed('Pan')).toBe(true)
 
-    const flourId = store.findGoodIdByName('Harina')
+    const flourId = goodStore.findIdByName('Harina')
     expect(flourId).toBeDefined()
 
-    const producer = store.findRecipeByName('Harina de trigo')
-    const consumer = store.findRecipeByName('Pan')
+    const producer = store.findByName('Harina de trigo')
+    const consumer = store.findByName('Pan')
     expect(producer).toBeDefined()
     expect(consumer).toBeDefined()
 
@@ -239,74 +242,5 @@ describe('RecipeStore', () => {
       expect(producer.usesGoodAsOutput(flourId)).toBe(true)
       expect(consumer.usesGoodAsInput(flourId)).toBe(true)
     }
-  })
-
-  describe('agents', () => {
-    it('saves a valid agent with name and initial inventory', () => {
-      const result = store.createAgent({
-        name: 'Panadero',
-        inventory: [
-          { goodName: 'Harina', quantity: 10 },
-          { goodName: 'Pan', quantity: 5 },
-        ],
-      })
-
-      expect(result.ok).toBe(true)
-      expect(store.agentCount()).toBe(1)
-
-      const agent = store.findAgentByName('Panadero')
-      expect(agent).toBeDefined()
-
-      const flourId = store.findGoodIdByName('Harina')
-      const breadId = store.findGoodIdByName('Pan')
-      expect(flourId).toBeDefined()
-      expect(breadId).toBeDefined()
-
-      if (agent && flourId && breadId) {
-        const flour = store.getGood(flourId)
-        const bread = store.getGood(breadId)
-        expect(flour).toBeDefined()
-        expect(bread).toBeDefined()
-
-        if (flour && bread) {
-          expect(agent.has(flour, 10)).toBe(true)
-          expect(agent.has(bread, 5)).toBe(true)
-        }
-      }
-    })
-
-    it('rejects an agent with an empty name and leaves catalog unchanged', () => {
-      const result = store.createAgent({
-        name: '',
-        inventory: [{ goodName: 'Harina', quantity: 10 }],
-      })
-
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.errors).toEqual([{ code: 'EMPTY_NAME' }])
-      }
-
-      expect(store.agentCount()).toBe(0)
-    })
-
-    it('rejects non-positive quantities and leaves catalog unchanged', () => {
-      const result = store.createAgent({
-        name: 'Panadero',
-        inventory: [
-          { goodName: 'Harina', quantity: 0 },
-          { goodName: 'Pan', quantity: -1 },
-        ],
-      })
-
-      expect(result.ok).toBe(false)
-      if (!result.ok) {
-        expect(result.errors).toEqual([
-          { code: 'INVALID_QUANTITY', goodName: 'Harina' },
-          { code: 'INVALID_QUANTITY', goodName: 'Pan' },
-        ])
-      }
-
-      expect(store.agentCount()).toBe(0)
-    })
   })
 })

@@ -59,6 +59,7 @@ import { ValidationErrorsComponent } from './validation-errors.component'
 
       <app-recipe-catalog
         [recipes]="presenter.recipes"
+        [goods]="presenter.goods"
         (edit)="presenter.startEdit($event)"
         (delete)="presenter.deleteRecipe($event)"
       />

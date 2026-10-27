@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
-import { recipeStore } from '@/domain/recipeStore'
+import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
 
 @Component({
@@ -31,10 +31,11 @@ import type { Recipe } from '@/domain/recipeStore'
 })
 export class RecipeCatalogComponent {
   @Input() recipes: Recipe[] = []
+  @Input() goods: Good[] = []
   @Output() edit = new EventEmitter<Recipe>()
   @Output() delete = new EventEmitter<string>()
 
   goodName(goodId: string): string {
-    return recipeStore.getGood(goodId)?.name ?? ''
+    return this.goods.find((g) => g.id === goodId)?.name ?? ''
   }
 }
