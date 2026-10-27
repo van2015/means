@@ -22,7 +22,9 @@ export function DesignMode() {
           legend="Entradas"
           lineLabel="insumo"
           addButtonLabel="entrada"
+          listId="goods-list-inputs"
           lines={presenter.inputs}
+          goods={presenter.goods}
           onAdd={presenter.addInput}
           onUpdate={presenter.updateInput}
         />
@@ -30,7 +32,9 @@ export function DesignMode() {
           legend="Salidas"
           lineLabel="producto"
           addButtonLabel="salida"
+          listId="goods-list-outputs"
           lines={presenter.outputs}
+          goods={presenter.goods}
           onAdd={presenter.addOutput}
           onUpdate={presenter.updateOutput}
         />
@@ -43,6 +47,25 @@ export function DesignMode() {
         onEdit={presenter.startEdit}
         onDelete={presenter.deleteRecipe}
       />
+      <section>
+        <h3>Catálogo de bienes y servicios</h3>
+        <form onSubmit={presenter.registerGood}>
+          <label>
+            Bien o servicio
+            <input
+              value={presenter.goodName}
+              onChange={(event) => presenter.setGoodName(event.target.value)}
+            />
+          </label>
+          <button type="submit">Registrar bien o servicio</button>
+        </form>
+        {presenter.goodError && <p>{presenter.goodError}</p>}
+        <ul>
+          {presenter.goods.map((good) => (
+            <li key={good.id}>{good.name}</li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }

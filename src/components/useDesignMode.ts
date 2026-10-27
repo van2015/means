@@ -10,6 +10,9 @@ export function useDesignMode() {
   const [recipes, setRecipes] = useState(recipeStore.getRecipes())
   const [errors, setErrors] = useState<RecipeError[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [goodName, setGoodName] = useState('')
+  const [goods, setGoods] = useState(recipeStore.getGoods())
+  const [goodError, setGoodError] = useState<string | null>(null)
 
   function addInput() {
     setInputs([...inputs, { goodName: '', quantity: '' }])
@@ -34,6 +37,18 @@ export function useDesignMode() {
   function deleteRecipe(id: string) {
     recipeStore.deleteRecipe(id)
     setRecipes(recipeStore.getRecipes())
+  }
+
+  function registerGood(event: React.FormEvent) {
+    event.preventDefault()
+    const result = recipeStore.createGood(goodName)
+    if (result.ok) {
+      setGoods(recipeStore.getGoods())
+      setGoodName('')
+      setGoodError(null)
+    } else {
+      setGoodError('El nombre no puede estar vacío')
+    }
   }
 
   function startEdit(recipe: Recipe) {
@@ -98,5 +113,10 @@ export function useDesignMode() {
     deleteRecipe,
     startEdit,
     submit,
+    goodName,
+    setGoodName,
+    goods,
+    goodError,
+    registerGood,
   }
 }

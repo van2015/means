@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DesignMode } from '@/components/DesignMode'
 import { recipeStore } from '@/domain/recipeStore'
+
+function withinRecipeCatalog() {
+  return within(screen.getByRole('heading', { name: /catálogo de recetas/i }).closest('section')!)
+}
 
 describe('DesignMode', () => {
   beforeEach(() => {
@@ -35,9 +39,9 @@ describe('DesignMode', () => {
     await user.click(screen.getByRole('button', { name: /guardar receta/i }))
 
     expect(screen.getByRole('heading', { name: /catálogo de recetas/i })).toBeInTheDocument()
-    expect(screen.getByText('Pan')).toBeInTheDocument()
-    expect(screen.getByText(/harina: 2/i)).toBeInTheDocument()
-    expect(screen.getByText(/pan: 1/i)).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText(/pan: 1/i)).toBeInTheDocument()
   })
 
   it('loads a recipe into the form when clicking edit', async () => {
@@ -74,8 +78,8 @@ describe('DesignMode', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /guardar receta/i }))
 
-    expect(screen.getByText('Pan integral')).toBeInTheDocument()
-    expect(screen.queryByText('Pan')).not.toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText('Pan integral')).toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText('Pan')).not.toBeInTheDocument()
   })
 
   it('deletes a recipe and it disappears from the catalog', async () => {
@@ -89,8 +93,8 @@ describe('DesignMode', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /eliminar/i }))
 
-    expect(screen.queryByText('Pan')).not.toBeInTheDocument()
-    expect(screen.queryByText(/harina: 2/i)).not.toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText('Pan')).not.toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText(/harina: 2/i)).not.toBeInTheDocument()
   })
 
   it('shows validation errors when editing an invalid recipe and does not update the catalog', async () => {
@@ -113,8 +117,62 @@ describe('DesignMode', () => {
     await userEvent.click(screen.getByRole('button', { name: /guardar receta/i }))
 
     expect(screen.getByText(/la cantidad de harina debe ser mayor que cero/i)).toBeInTheDocument()
-    expect(screen.getByText('Pan')).toBeInTheDocument()
-    expect(screen.queryByText('Pan invalido')).not.toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText('Pan invalido')).not.toBeInTheDocument()
+  })
+
+  it('registers a good and shows it in the goods catalog', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(screen.getByLabelText(/bien o servicio/i), 'Harina')
+    await user.click(screen.getByRole('button', { name: /registrar bien o servicio/i }))
+
+    expect(screen.getByRole('heading', { name: /bienes y servicios/i })).toBeInTheDocument()
+    expect(screen.getByText('Harina')).toBeInTheDocument()
+  })
+
+  it('shows an error when registering a good with an empty name', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.click(screen.getByRole('button', { name: /registrar bien o servicio/i }))
+
+    expect(screen.getByText(/el nombre no puede estar vacío/i)).toBeInTheDocument()
+    expect(screen.queryByRole('listitem', { name: /harina/i })).not.toBeInTheDocument()
+  })
+
+  it('lets the user pick an existing good when adding a recipe line', async () => {
+    const user = userEvent.setup()
+    recipeStore.createGood('Harina')
+
+    render(<DesignMode />)
+
+    await user.click(screen.getByRole('button', { name: /agregar entrada/i }))
+
+    const input = screen.getByLabelText(/nombre del insumo 1/i)
+    expect(input).toHaveAttribute('list', 'goods-list-inputs')
+
+    const datalist = document.getElementById('goods-list-inputs')
+    expect(datalist).toBeInTheDocument()
+    expect(datalist?.querySelector('option[value="Harina"]')).toBeInTheDocument()
+
+    await user.type(input, 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del insumo 1/i), '2')
+
+    await user.click(screen.getByRole('button', { name: /agregar salida/i }))
+    await user.type(screen.getByLabelText(/nombre del producto 1/i), 'Pan')
+    await user.type(screen.getByLabelText(/cantidad del producto 1/i), '1')
+
+    await user.type(screen.getByLabelText(/^nombre$/i), 'Pan')
+    await user.click(screen.getByRole('button', { name: /guardar receta/i }))
+
+    expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText(/pan: 1/i)).toBeInTheDocument()
+
+    const harinaGoods = recipeStore.getGoods().filter((good) => good.name === 'Harina')
+    expect(harinaGoods).toHaveLength(1)
   })
 
   it('shows validation errors on invalid submit', async () => {
