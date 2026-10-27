@@ -274,5 +274,39 @@ describe('RecipeStore', () => {
         }
       }
     })
+
+    it('rejects an agent with an empty name and leaves catalog unchanged', () => {
+      const result = store.createAgent({
+        name: '',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'EMPTY_NAME' }])
+      }
+
+      expect(store.agentCount()).toBe(0)
+    })
+
+    it('rejects non-positive quantities and leaves catalog unchanged', () => {
+      const result = store.createAgent({
+        name: 'Panadero',
+        inventory: [
+          { goodName: 'Harina', quantity: 0 },
+          { goodName: 'Pan', quantity: -1 },
+        ],
+      })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([
+          { code: 'INVALID_QUANTITY', goodName: 'Harina' },
+          { code: 'INVALID_QUANTITY', goodName: 'Pan' },
+        ])
+      }
+
+      expect(store.agentCount()).toBe(0)
+    })
   })
 })

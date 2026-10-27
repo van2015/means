@@ -109,6 +109,22 @@ export class RecipeStore {
   }
 
   createAgent(draft: AgentDraft): AgentResult {
+    const errors: AgentError[] = []
+
+    if (draft.name.trim() === '') {
+      errors.push({ code: 'EMPTY_NAME' })
+    }
+
+    for (const line of draft.inventory) {
+      if (line.quantity <= 0) {
+        errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
+      }
+    }
+
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
     const agent = new Agent(
       generateId(),
       draft.name,
