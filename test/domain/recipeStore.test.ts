@@ -111,6 +111,35 @@ describe('RecipeStore', () => {
     expect(store.findRecipeByName('Pan')).toBeUndefined()
   })
 
+  it('updateRecipe rejects invalid drafts and leaves the original untouched', () => {
+    const created = store.createRecipe(
+      RecipeBuilder.aRecipe()
+        .named('Pan')
+        .withInput('Harina', 2)
+        .withOutput('Pan', 1)
+        .build(),
+    )
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const result = store.updateRecipe(created.recipe.id, {
+      name: 'Pan invalido',
+      inputs: [],
+      outputs: [{ goodName: 'Pan', quantity: -1 }],
+    })
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.errors).toEqual([
+      { code: 'NO_INPUTS' },
+      { code: 'INVALID_QUANTITY', goodName: 'Pan' },
+    ])
+
+    const original = store.findRecipeByName('Pan')
+    expect(original).toBeDefined()
+    expect(original?.id).toBe(created.recipe.id)
+  })
+
   it('updates an existing recipe and keeps the same id', () => {
     const created = store.createRecipe(
       RecipeBuilder.aRecipe()

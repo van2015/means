@@ -37,7 +37,12 @@ export function DesignMode() {
         <button type="submit">Guardar receta</button>
       </form>
       <ValidationErrors errors={presenter.errors} />
-      <RecipeCatalog recipes={presenter.recipes} store={recipeStore} />
+      <RecipeCatalog
+        recipes={presenter.recipes}
+        store={recipeStore}
+        onEdit={presenter.startEdit}
+        onDelete={presenter.deleteRecipe}
+      />
     </div>
   )
 }

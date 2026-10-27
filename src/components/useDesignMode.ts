@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { recipeStore } from '@/domain/recipeStore'
-import type { RecipeError } from '@/domain/recipeStore'
+import type { Recipe, RecipeError } from '@/domain/recipeStore'
 import type { LineDraft } from './RecipeLineForm'
 
 export function useDesignMode() {
@@ -9,6 +9,7 @@ export function useDesignMode() {
   const [outputs, setOutputs] = useState<LineDraft[]>([])
   const [recipes, setRecipes] = useState(recipeStore.getRecipes())
   const [errors, setErrors] = useState<RecipeError[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   function addInput() {
     setInputs([...inputs, { goodName: '', quantity: '' }])
@@ -30,10 +31,32 @@ export function useDesignMode() {
     setOutputs(next)
   }
 
+  function deleteRecipe(id: string) {
+    recipeStore.deleteRecipe(id)
+    setRecipes(recipeStore.getRecipes())
+  }
+
+  function startEdit(recipe: Recipe) {
+    setEditingId(recipe.id)
+    setName(recipe.name)
+    setInputs(
+      recipe.inputs.map((line) => ({
+        goodName: recipeStore.getGood(line.goodId)?.name ?? '',
+        quantity: String(line.quantity),
+      })),
+    )
+    setOutputs(
+      recipe.outputs.map((line) => ({
+        goodName: recipeStore.getGood(line.goodId)?.name ?? '',
+        quantity: String(line.quantity),
+      })),
+    )
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault()
 
-    const result = recipeStore.createRecipe({
+    const draft = {
       name,
       inputs: inputs.map((line) => ({
         goodName: line.goodName,
@@ -43,13 +66,18 @@ export function useDesignMode() {
         goodName: line.goodName,
         quantity: Number(line.quantity),
       })),
-    })
+    }
+
+    const result = editingId
+      ? recipeStore.updateRecipe(editingId, draft)
+      : recipeStore.createRecipe(draft)
 
     if (result.ok) {
       setRecipes(recipeStore.getRecipes())
       setName('')
       setInputs([])
       setOutputs([])
+      setEditingId(null)
       setErrors([])
     } else {
       setErrors(result.errors)
@@ -67,6 +95,8 @@ export function useDesignMode() {
     updateOutput,
     recipes,
     errors,
+    deleteRecipe,
+    startEdit,
     submit,
   }
 }
