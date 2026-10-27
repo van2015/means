@@ -1,9 +1,5 @@
 import type { Good } from '@/domain/recipeStore'
-
-export type LineDraft = {
-  goodName: string
-  quantity: string
-}
+import type { LineDraft } from '@/presentation/designModePresenter'
 
 type RecipeLineFormProps = {
   legend: string

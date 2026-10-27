@@ -10,7 +10,10 @@ export function DesignMode() {
   return (
     <div>
       <h2>Modo diseño</h2>
-      <form onSubmit={presenter.submit}>
+      <form onSubmit={(event) => {
+        event.preventDefault()
+        presenter.submit()
+      }}>
         <label>
           Nombre
           <input
@@ -49,7 +52,10 @@ export function DesignMode() {
       />
       <section>
         <h3>Catálogo de bienes y servicios</h3>
-        <form onSubmit={presenter.registerGood}>
+        <form onSubmit={(event) => {
+          event.preventDefault()
+          presenter.registerGood()
+        }}>
           <label>
             Bien o servicio
             <input
