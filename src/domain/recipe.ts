@@ -23,6 +23,7 @@ export type RecipeError =
   | { code: 'NO_INPUTS' }
   | { code: 'NO_OUTPUTS' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
+  | { code: 'RECIPE_NOT_FOUND' }
 
 export type RecipeResult =
   | { ok: true; recipe: Recipe }

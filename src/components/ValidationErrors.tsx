@@ -8,6 +8,8 @@ function errorMessage(error: RecipeError): string {
       return 'Se requiere al menos una salida'
     case 'INVALID_QUANTITY':
       return `La cantidad de ${error.goodName} debe ser mayor que cero`
+    case 'RECIPE_NOT_FOUND':
+      return 'Receta no encontrada'
   }
 }
 

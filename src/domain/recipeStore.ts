@@ -45,8 +45,35 @@ export class RecipeStore {
       return { ok: false, errors }
     }
 
-    const recipe = createRecipeEntity(
-      generateId(),
+    const recipe = this.buildRecipe(generateId(), draft)
+    this.recipes.push(recipe)
+    return { ok: true, recipe }
+  }
+
+  updateRecipe(id: string, draft: RecipeDraft): RecipeResult {
+    const errors = validateRecipe(draft.inputs, draft.outputs)
+
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const index = this.recipes.findIndex((recipe) => recipe.id === id)
+    if (index === -1) {
+      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
+    }
+
+    const recipe = this.buildRecipe(id, draft)
+    this.recipes[index] = recipe
+    return { ok: true, recipe }
+  }
+
+  deleteRecipe(id: string): void {
+    this.recipes = this.recipes.filter((recipe) => recipe.id !== id)
+  }
+
+  private buildRecipe(id: string, draft: RecipeDraft): Recipe {
+    return createRecipeEntity(
+      id,
       draft.name,
       draft.inputs.map((line) => ({
         goodId: this.findOrCreateGood(line.goodName).id,
@@ -57,9 +84,6 @@ export class RecipeStore {
         quantity: line.quantity,
       })),
     )
-
-    this.recipes.push(recipe)
-    return { ok: true, recipe }
   }
 
   private findOrCreateGood(name: string): Good {

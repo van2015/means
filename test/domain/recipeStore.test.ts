@@ -94,6 +94,67 @@ describe('RecipeStore', () => {
     expect(store.recipeCount()).toBe(0)
   })
 
+  it('deleteRecipe removes the recipe from the catalog', () => {
+    const created = store.createRecipe(
+      RecipeBuilder.aRecipe()
+        .named('Pan')
+        .withInput('Harina', 2)
+        .withOutput('Pan', 1)
+        .build(),
+    )
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    store.deleteRecipe(created.recipe.id)
+
+    expect(store.recipeCount()).toBe(0)
+    expect(store.findRecipeByName('Pan')).toBeUndefined()
+  })
+
+  it('updates an existing recipe and keeps the same id', () => {
+    const created = store.createRecipe(
+      RecipeBuilder.aRecipe()
+        .named('Pan')
+        .withInput('Harina', 2)
+        .withOutput('Pan', 1)
+        .build(),
+    )
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const result = store.updateRecipe(created.recipe.id, {
+      name: 'Pan integral',
+      inputs: [{ goodName: 'Harina integral', quantity: 3 }],
+      outputs: [{ goodName: 'Pan integral', quantity: 1 }],
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.recipe.id).toBe(created.recipe.id)
+    expect(result.recipe.name).toBe('Pan integral')
+
+    const flourId = store.findGoodIdByName('Harina integral')
+    const breadId = store.findGoodIdByName('Pan integral')
+    expect(flourId).toBeDefined()
+    expect(breadId).toBeDefined()
+
+    if (flourId && breadId) {
+      const flour = store.getGood(flourId)
+      const bread = store.getGood(breadId)
+      expect(flour).toBeDefined()
+      expect(bread).toBeDefined()
+      if (flour && bread) {
+        expect(result.recipe.consumes(flour, 3)).toBe(true)
+        expect(result.recipe.produces(bread, 1)).toBe(true)
+      }
+    }
+
+    const catalogRecipe = store.findRecipeByName('Pan integral')
+    expect(catalogRecipe).toBeDefined()
+    expect(catalogRecipe?.id).toBe(created.recipe.id)
+  })
+
   it('creates missing goods inline and links recipes to them', () => {
     const first = store.createRecipe(
       RecipeBuilder.aRecipe()
