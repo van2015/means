@@ -201,4 +201,17 @@ describe('DesignMode', () => {
     expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
     expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
   })
+
+  it('displays existing agents with their name and initial inventory', () => {
+    recipeStore.createAgent({
+      name: 'Panadero',
+      inventory: [{ goodName: 'Harina', quantity: 10 }],
+    })
+
+    render(<DesignMode />)
+
+    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
+    expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
+    expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
+  })
 })

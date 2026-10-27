@@ -28,6 +28,7 @@ export class RecipeStore {
   reset(): void {
     this.goods = []
     this.recipes = []
+    this.agents = []
   }
 
   getGoods(): Good[] {
