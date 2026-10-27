@@ -104,6 +104,10 @@ export class RecipeStore {
     return this.agents.length
   }
 
+  getAgents(): Agent[] {
+    return this.agents
+  }
+
   findAgentByName(name: string): Agent | undefined {
     return this.agents.find((a) => a.name === name)
   }

@@ -16,7 +16,7 @@ describe('DesignMode', () => {
   it('renders a recipe form with inputs, outputs and save', () => {
     render(<DesignMode />)
 
-    expect(screen.getByLabelText(/nombre/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/^nombre$/i)).toBeInTheDocument()
     expect(screen.getByText(/entradas/i)).toBeInTheDocument()
     expect(screen.getByText(/salidas/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /guardar receta/i })).toBeInTheDocument()
@@ -26,7 +26,7 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/nombre/i), 'Pan')
+    await user.type(screen.getByLabelText(/^nombre$/i), 'Pan')
 
     await user.click(screen.getByRole('button', { name: /agregar entrada/i }))
     await user.type(screen.getByLabelText(/nombre del insumo 1/i), 'Harina')
@@ -183,5 +183,22 @@ describe('DesignMode', () => {
 
     expect(screen.getByText(/se requiere al menos una entrada/i)).toBeInTheDocument()
     expect(screen.getByText(/se requiere al menos una salida/i)).toBeInTheDocument()
+  })
+
+  it('creates an agent with name and initial inventory and shows it in the catalog', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
+
+    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
+    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
+
+    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+
+    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
+    expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
+    expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
 import { recipeStore } from '@/domain/recipeStore'
-import type { Good, Recipe, RecipeError } from '@/domain/recipeStore'
+import type { Agent, AgentError, Good, Recipe, RecipeError } from '@/domain/recipeStore'
 
 export type LineDraft = {
   goodName: string
@@ -16,6 +16,10 @@ export class DesignModePresenter {
   private goodNameValue = ''
   private goodsValue = recipeStore.getGoods()
   private goodErrorValue: string | null = null
+  private agentNameValue = ''
+  private agentInventoryValue: LineDraft[] = []
+  private agentErrorsValue: AgentError[] = []
+  private agentsValue = recipeStore.getAgents()
   private listeners = new Set<() => void>()
 
   get name(): string {
@@ -52,6 +56,22 @@ export class DesignModePresenter {
 
   get goodError(): string | null {
     return this.goodErrorValue
+  }
+
+  get agentName(): string {
+    return this.agentNameValue
+  }
+
+  get agentInventory(): LineDraft[] {
+    return this.agentInventoryValue
+  }
+
+  get agentErrors(): AgentError[] {
+    return this.agentErrorsValue
+  }
+
+  get agents(): Agent[] {
+    return this.agentsValue
   }
 
   subscribe(callback: () => void): () => void {
@@ -158,6 +178,45 @@ export class DesignModePresenter {
     } else {
       this.goodErrorValue = 'El nombre no puede estar vacío'
     }
+    this.notify()
+  }
+
+  setAgentName(name: string): void {
+    this.agentNameValue = name
+    this.notify()
+  }
+
+  addAgentInventoryLine(): void {
+    this.agentInventoryValue = [...this.agentInventoryValue, { goodName: '', quantity: '' }]
+    this.notify()
+  }
+
+  updateAgentInventoryLine(index: number, field: keyof LineDraft, value: string): void {
+    const next = [...this.agentInventoryValue]
+    next[index][field] = value
+    this.agentInventoryValue = next
+    this.notify()
+  }
+
+  submitAgent(): void {
+    const result = recipeStore.createAgent({
+      name: this.agentNameValue,
+      inventory: this.agentInventoryValue.map((line) => ({
+        goodName: line.goodName,
+        quantity: Number(line.quantity),
+      })),
+    })
+
+    if (result.ok) {
+      this.agentsValue = recipeStore.getAgents()
+      this.goodsValue = recipeStore.getGoods()
+      this.agentNameValue = ''
+      this.agentInventoryValue = []
+      this.agentErrorsValue = []
+    } else {
+      this.agentErrorsValue = result.errors
+    }
+
     this.notify()
   }
 }

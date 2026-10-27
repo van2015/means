@@ -72,6 +72,52 @@ export function DesignMode() {
           ))}
         </ul>
       </section>
+      <section>
+        <h3>Crear agente</h3>
+        <form onSubmit={(event) => {
+          event.preventDefault()
+          presenter.submitAgent()
+        }}>
+          <label>
+            Nombre del agente
+            <input
+              value={presenter.agentName}
+              onChange={(event) => presenter.setAgentName(event.target.value)}
+            />
+          </label>
+          <RecipeLineForm
+            legend="Inventario inicial"
+            lineLabel="bien"
+            addButtonLabel="línea de inventario"
+            listId="goods-list-agent"
+            lines={presenter.agentInventory}
+            goods={presenter.goods}
+            onAdd={presenter.addAgentInventoryLine}
+            onUpdate={presenter.updateAgentInventoryLine}
+          />
+          <button type="submit">Crear agente</button>
+        </form>
+      </section>
+      <section>
+        <h3>Catálogo de agentes</h3>
+        <ul>
+          {presenter.agents.map((agent) => (
+            <li key={agent.id}>
+              {agent.name}
+              <ul>
+                {agent.inventory.map((line, index) => {
+                  const good = recipeStore.getGood(line.goodId)
+                  return (
+                    <li key={index}>
+                      {good?.name}: {line.quantity}
+                    </li>
+                  )
+                })}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   )
 }

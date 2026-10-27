@@ -20,6 +20,10 @@ export function useDesignMode() {
     goodName: presenter.goodName,
     goods: presenter.goods,
     goodError: presenter.goodError,
+    agentName: presenter.agentName,
+    agentInventory: presenter.agentInventory,
+    agents: presenter.agents,
+    agentErrors: presenter.agentErrors,
     setName: (name: string) => presenter.setName(name),
     addInput: () => presenter.addInput(),
     updateInput: (index: number, field: keyof LineDraft, value: string) =>
@@ -32,5 +36,10 @@ export function useDesignMode() {
     submit: () => presenter.submit(),
     setGoodName: (name: string) => presenter.setGoodName(name),
     registerGood: () => presenter.registerGood(),
+    setAgentName: (name: string) => presenter.setAgentName(name),
+    addAgentInventoryLine: () => presenter.addAgentInventoryLine(),
+    updateAgentInventoryLine: (index: number, field: keyof LineDraft, value: string) =>
+      presenter.updateAgentInventoryLine(index, field, value),
+    submitAgent: () => presenter.submitAgent(),
   }
 }
