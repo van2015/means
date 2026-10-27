@@ -214,4 +214,21 @@ describe('DesignMode', () => {
     expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
     expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
   })
+
+  it('shows validation errors when creating an agent with empty name or invalid quantity', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
+    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '0')
+
+    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+
+    expect(screen.getByText(/el nombre no puede estar vacío/i)).toBeInTheDocument()
+    expect(screen.getByText(/la cantidad de harina debe ser mayor que cero/i)).toBeInTheDocument()
+
+    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
+    expect(within(agentCatalog).queryByText('Panadero')).not.toBeInTheDocument()
+  })
 })

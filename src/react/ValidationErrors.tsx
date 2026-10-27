@@ -1,6 +1,8 @@
-import type { RecipeError } from '@/domain/recipeStore'
+import type { AgentError, RecipeError } from '@/domain/recipeStore'
 
-function errorMessage(error: RecipeError): string {
+type ValidationError = RecipeError | AgentError
+
+function errorMessage(error: ValidationError): string {
   switch (error.code) {
     case 'NO_INPUTS':
       return 'Se requiere al menos una entrada'
@@ -10,10 +12,12 @@ function errorMessage(error: RecipeError): string {
       return `La cantidad de ${error.goodName} debe ser mayor que cero`
     case 'RECIPE_NOT_FOUND':
       return 'Receta no encontrada'
+    case 'EMPTY_NAME':
+      return 'El nombre no puede estar vacío'
   }
 }
 
-export function ValidationErrors({ errors }: { errors: RecipeError[] }) {
+export function ValidationErrors({ errors }: { errors: ValidationError[] }) {
   if (errors.length === 0) return null
 
   return (

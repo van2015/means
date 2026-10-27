@@ -97,6 +97,7 @@ export function DesignMode() {
           />
           <button type="submit">Crear agente</button>
         </form>
+        <ValidationErrors errors={presenter.agentErrors} />
       </section>
       <section>
         <h3>Catálogo de agentes</h3>
