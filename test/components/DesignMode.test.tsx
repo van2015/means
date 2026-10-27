@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { DesignMode } from '@/components/DesignMode'
+import { DesignMode } from '@/react/DesignMode'
 import { recipeStore } from '@/domain/recipeStore'
 
 function withinRecipeCatalog() {
