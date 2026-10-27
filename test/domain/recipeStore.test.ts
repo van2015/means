@@ -184,6 +184,26 @@ describe('RecipeStore', () => {
     expect(catalogRecipe?.id).toBe(created.recipe.id)
   })
 
+  it('createGood rejects empty names and leaves catalog unchanged', () => {
+    const result = store.createGood('')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) return
+    expect(result.error).toBe('EMPTY_NAME')
+    expect(store.getGoods()).toHaveLength(0)
+  })
+
+  it('createGood adds a good to the catalog', () => {
+    const result = store.createGood('Harina')
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+
+    expect(result.good.name).toBe('Harina')
+    expect(store.hasGoodNamed('Harina')).toBe(true)
+    expect(store.getGoods()).toContainEqual(result.good)
+  })
+
   it('creates missing goods inline and links recipes to them', () => {
     const first = store.createRecipe(
       RecipeBuilder.aRecipe()

@@ -1,6 +1,10 @@
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Good, Recipe, RecipeDraft, RecipeResult } from './recipe'
 
+type CreateGoodResult =
+  | { ok: true; good: Good }
+  | { ok: false; error: 'EMPTY_NAME' }
+
 export class RecipeStore {
   private goods: Good[] = []
   private recipes: Recipe[] = []
@@ -32,6 +36,15 @@ export class RecipeStore {
 
   getGood(id: string): Good | undefined {
     return this.goods.find((g) => g.id === id)
+  }
+
+  createGood(name: string): CreateGoodResult {
+    if (name.trim() === '') {
+      return { ok: false, error: 'EMPTY_NAME' }
+    }
+
+    const good = this.findOrCreateGood(name)
+    return { ok: true, good }
   }
 
   findRecipeByName(name: string): Recipe | undefined {
