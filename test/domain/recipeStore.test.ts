@@ -240,4 +240,39 @@ describe('RecipeStore', () => {
       expect(consumer.usesGoodAsInput(flourId)).toBe(true)
     }
   })
+
+  describe('agents', () => {
+    it('saves a valid agent with name and initial inventory', () => {
+      const result = store.createAgent({
+        name: 'Panadero',
+        inventory: [
+          { goodName: 'Harina', quantity: 10 },
+          { goodName: 'Pan', quantity: 5 },
+        ],
+      })
+
+      expect(result.ok).toBe(true)
+      expect(store.agentCount()).toBe(1)
+
+      const agent = store.findAgentByName('Panadero')
+      expect(agent).toBeDefined()
+
+      const flourId = store.findGoodIdByName('Harina')
+      const breadId = store.findGoodIdByName('Pan')
+      expect(flourId).toBeDefined()
+      expect(breadId).toBeDefined()
+
+      if (agent && flourId && breadId) {
+        const flour = store.getGood(flourId)
+        const bread = store.getGood(breadId)
+        expect(flour).toBeDefined()
+        expect(bread).toBeDefined()
+
+        if (flour && bread) {
+          expect(agent.has(flour, 10)).toBe(true)
+          expect(agent.has(bread, 5)).toBe(true)
+        }
+      }
+    })
+  })
 })

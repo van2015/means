@@ -1,13 +1,29 @@
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Good, Recipe, RecipeDraft, RecipeResult } from './recipe'
+import { Agent } from './agent'
+import type { DraftLine } from './recipe'
 
 type CreateGoodResult =
   | { ok: true; good: Good }
   | { ok: false; error: 'EMPTY_NAME' }
 
+type AgentError =
+  | { code: 'EMPTY_NAME' }
+  | { code: 'INVALID_QUANTITY'; goodName: string }
+
+type AgentResult =
+  | { ok: true; agent: Agent }
+  | { ok: false; errors: AgentError[] }
+
+type AgentDraft = {
+  name: string
+  inventory: DraftLine[]
+}
+
 export class RecipeStore {
   private goods: Good[] = []
   private recipes: Recipe[] = []
+  private agents: Agent[] = []
 
   reset(): void {
     this.goods = []
@@ -82,6 +98,27 @@ export class RecipeStore {
 
   deleteRecipe(id: string): void {
     this.recipes = this.recipes.filter((recipe) => recipe.id !== id)
+  }
+
+  agentCount(): number {
+    return this.agents.length
+  }
+
+  findAgentByName(name: string): Agent | undefined {
+    return this.agents.find((a) => a.name === name)
+  }
+
+  createAgent(draft: AgentDraft): AgentResult {
+    const agent = new Agent(
+      generateId(),
+      draft.name,
+      draft.inventory.map((line) => ({
+        goodId: this.findOrCreateGood(line.goodName).id,
+        quantity: line.quantity,
+      })),
+    )
+    this.agents.push(agent)
+    return { ok: true, agent }
   }
 
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
