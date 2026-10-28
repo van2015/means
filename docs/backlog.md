@@ -19,6 +19,7 @@ Aplicación de crafting/economía para juegos. Un único usuario alterna entre m
 - [ ] **#8** Como usuario en modo juego, quiero ver los agentes disponibles y poseer uno, para controlarlo. Requires: #4
 - [ ] **#9** Como usuario en modo juego, quiero cambiar de agente poseído o dejar de poseer ninguno, para gestionar mi conjunto de agentes. Requires: #8
 - [ ] **#10** Como usuario en modo juego, quiero ver el inventario y las recetas del agente que poseo, para decidir qué acciones tomar. Requires: #8
-- [ ] **#11** Como usuario en modo juego, quiero producir usando una receta del catálogo o propia del agente poseído, para que consuma de su inventario y genere resultados. Requires: #1, #5, #8
-- [ ] **#12** Como usuario en modo juego, quiero que los agentes no poseídos ejecuten sus reglas automáticas mientras controlo a otro, para que el resto de la economía siga funcionando. Requires: #6, #8
-- [ ] **#13** Como usuario, quiero exportar e importar una selección de elementos del mundo (recetas, bienes/servicios, agentes o reglas), para compartir o respaldar partes del juego. Requires: #1
+- [ ] **#11** Como usuario en modo juego, quiero cambiar la prioridad de las reglas automáticas del agente que poseo, para ajustar su comportamiento autónomo. Requires: #6, #8
+- [ ] **#12** Como usuario en modo juego, quiero producir usando una receta del catálogo o propia del agente poseído, para que consuma de su inventario y genere resultados. Requires: #1, #5, #8
+- [ ] **#13** Como usuario en modo juego, quiero que los agentes no poseídos ejecuten sus reglas automáticas mientras controlo a otro, para que el resto de la economía siga funcionando. Requires: #6, #8
+- [ ] **#14** Como usuario, quiero exportar e importar una selección de elementos del mundo (recetas, bienes/servicios, agentes o reglas), para compartir o respaldar partes del juego. Requires: #1

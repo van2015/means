@@ -1,9 +1,9 @@
+import { generateId } from './id'
 import { Agent, validateAgent, validateRule } from './agent'
 import type { AgentDraft, AgentResult, Rule, RuleCondition, RuleError } from './agent'
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
-import { goodStore } from './goodStore'
 
 export type FindAgentResult =
   | { ok: true; agent: Agent }
@@ -140,7 +140,7 @@ export class AgentStore {
       condition,
       priority,
     }
-    const updatedRules = [...agentResult.agent.rules, rule]
+    const updatedRules = [...agentResult.agent.rules, rule].sort((a, b) => a.priority - b.priority)
     this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
     return { ok: true, rule }
   }
@@ -169,6 +169,7 @@ export class AgentStore {
     }
     const updatedRules = [...agentResult.agent.rules]
     updatedRules[index] = rule
+    updatedRules.sort((a, b) => a.priority - b.priority)
     this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
     return { ok: true, rule }
   }
@@ -203,12 +204,6 @@ export class AgentStore {
     this.agents[index] = new Agent(agent.id, agent.name, agent.inventory, recipes, rules)
   }
 }
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2)
-}
-
-export const agentStore = new AgentStore(goodStore)
 
 export type {
   Agent,

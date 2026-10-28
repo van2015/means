@@ -1,10 +1,8 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { createStores, type Stores } from '@/domain/stores'
 import { DesignMode } from '@/react/DesignMode'
-import { agentStore } from '@/domain/agentStore'
-import { goodStore } from '@/domain/goodStore'
-import { recipeStore } from '@/domain/recipeStore'
 import {
   addAgentInventoryLineButton,
   addAgentRecipeInputButton,
@@ -31,7 +29,7 @@ import {
   recipeOutputGoodName,
   recipeOutputQuantity,
   registerGoodButton,
-  ruleConditionGoodInput,
+  ruleConditionGoodSelect,
   ruleConditionOperatorSelect,
   ruleConditionQuantityInput,
   rulePriorityInput,
@@ -44,14 +42,14 @@ import {
 } from '../helpers/designModeQueries'
 
 describe('DesignMode', () => {
+  let stores: Stores
+
   beforeEach(() => {
-    goodStore.reset()
-    recipeStore.reset()
-    agentStore.reset()
+    stores = createStores()
   })
 
   it('renders a recipe form with inputs, outputs and save', () => {
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     expect(recipeNameInput()).toBeInTheDocument()
     expect(screen.getByText(/entradas/i)).toBeInTheDocument()
@@ -61,7 +59,7 @@ describe('DesignMode', () => {
 
   it('saves a valid recipe and shows it in the catalog', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(recipeNameInput(), 'Pan')
 
@@ -82,13 +80,13 @@ describe('DesignMode', () => {
   })
 
   it('loads a recipe into the form when clicking edit', async () => {
-    recipeStore.create({
+    stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
     })
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await userEvent.click(editButton())
 
@@ -100,13 +98,13 @@ describe('DesignMode', () => {
   })
 
   it('saves edited recipe and shows updated data in the catalog', async () => {
-    recipeStore.create({
+    stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
     })
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await userEvent.click(editButton())
 
@@ -120,13 +118,13 @@ describe('DesignMode', () => {
   })
 
   it('deletes a recipe and it disappears from the catalog', async () => {
-    recipeStore.create({
+    stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
     })
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await userEvent.click(deleteButton())
 
@@ -135,13 +133,13 @@ describe('DesignMode', () => {
   })
 
   it('shows validation errors when editing an invalid recipe and does not update the catalog', async () => {
-    recipeStore.create({
+    stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
     })
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await userEvent.click(editButton())
 
@@ -160,7 +158,7 @@ describe('DesignMode', () => {
 
   it('registers a good and shows it in the goods catalog', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(goodNameInput(), 'Harina')
     await user.click(registerGoodButton())
@@ -171,7 +169,7 @@ describe('DesignMode', () => {
 
   it('shows an error when registering a good with an empty name', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.click(registerGoodButton())
 
@@ -181,9 +179,9 @@ describe('DesignMode', () => {
 
   it('lets the user pick an existing good when adding a recipe line', async () => {
     const user = userEvent.setup()
-    goodStore.create('Harina')
+    stores.goodStore.create('Harina')
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.click(addRecipeInputButton())
 
@@ -208,13 +206,13 @@ describe('DesignMode', () => {
     expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText(/pan: 1/i)).toBeInTheDocument()
 
-    const harinaGoods = goodStore.all().filter((good) => good.name === 'Harina')
+    const harinaGoods = stores.goodStore.all().filter((good) => good.name === 'Harina')
     expect(harinaGoods).toHaveLength(1)
   })
 
   it('shows validation errors on invalid submit', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.click(saveRecipeButton())
 
@@ -224,7 +222,7 @@ describe('DesignMode', () => {
 
   it('creates an agent with name and initial inventory and shows it in the catalog', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
 
@@ -240,12 +238,12 @@ describe('DesignMode', () => {
   })
 
   it('displays existing agents with their name and initial inventory', () => {
-    agentStore.create({
+    stores.agentStore.create({
       name: 'Panadero',
       inventory: [{ goodName: 'Harina', quantity: 10 }],
     })
 
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     const agentCatalog = withinAgentCatalog()
     expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
@@ -254,7 +252,7 @@ describe('DesignMode', () => {
 
   it('shows validation errors when creating an agent with empty name or invalid quantity', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.click(addAgentInventoryLineButton())
     await user.type(agentInventoryGoodName(1), 'Harina')
@@ -271,7 +269,7 @@ describe('DesignMode', () => {
 
   it('creates an agent-specific recipe and shows it under that agent', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -300,7 +298,7 @@ describe('DesignMode', () => {
 
   it('edits an agent-specific recipe and reflects the change under the agent', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -335,7 +333,7 @@ describe('DesignMode', () => {
 
   it('deletes an agent-specific recipe and it disappears from the agent', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -364,7 +362,7 @@ describe('DesignMode', () => {
 
   it('shows validation errors when saving an invalid agent-specific recipe and does not save', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -397,7 +395,7 @@ describe('DesignMode', () => {
 
   it('does not show agent-specific recipes in the general recipe catalog', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -422,7 +420,7 @@ describe('DesignMode', () => {
   })
 
   it('creates an automatic rule for an agent and shows it in the ordered rule list', async () => {
-    const recipe = recipeStore.create({
+    const recipe = stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
       outputs: [{ goodName: 'Pan', quantity: 1 }],
@@ -430,8 +428,12 @@ describe('DesignMode', () => {
     expect(recipe.ok).toBe(true)
     if (!recipe.ok) return
 
+    const goodResult = stores.goodStore.findIdByName('Harina')
+    expect(goodResult.ok).toBe(true)
+    if (!goodResult.ok) return
+
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -443,7 +445,7 @@ describe('DesignMode', () => {
     await user.click(manageAgentRulesButton(agentCatalog))
 
     await user.selectOptions(ruleRecipeSelect(), `catalog:${recipe.recipe.id}`)
-    await user.type(ruleConditionGoodInput(), 'Harina')
+    await user.selectOptions(ruleConditionGoodSelect(), goodResult.id)
     await user.type(ruleConditionQuantityInput(), '2')
     await user.selectOptions(ruleConditionOperatorSelect(), 'AT_LEAST')
     await user.type(rulePriorityInput(), '1')
@@ -455,7 +457,7 @@ describe('DesignMode', () => {
 
   it('shows validation errors when saving a rule without recipe or condition', async () => {
     const user = userEvent.setup()
-    render(<DesignMode />)
+    render(<DesignMode stores={stores} />)
 
     await user.type(agentNameInput(), 'Panadero')
     await user.click(addAgentInventoryLineButton())
@@ -471,5 +473,143 @@ describe('DesignMode', () => {
     expect(screen.getByText(/se requiere un bien para la condición/i)).toBeInTheDocument()
     expect(screen.getByText(/la cantidad de la condición debe ser mayor que cero/i)).toBeInTheDocument()
     expect(agentCatalog.queryByText(/prioridad:/i)).not.toBeInTheDocument()
+  })
+
+  it('edits an automatic rule and reflects the change in the ordered list', async () => {
+    const recipe = stores.recipeStore.create({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(recipe.ok).toBe(true)
+    if (!recipe.ok) return
+
+    const goodResult = stores.goodStore.findIdByName('Harina')
+    expect(goodResult.ok).toBe(true)
+    if (!goodResult.ok) return
+
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${recipe.recipe.id}`)
+    await user.selectOptions(ruleConditionGoodSelect(), goodResult.id)
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+
+    await user.click(editButton(agentCatalog))
+    await user.clear(ruleConditionQuantityInput())
+    await user.type(ruleConditionQuantityInput(), '3')
+    await user.clear(rulePriorityInput())
+    await user.type(rulePriorityInput(), '2')
+    await user.click(saveRuleButton())
+
+    expect(agentCatalog.getByText(/Pan — al menos 3 Harina/i)).toBeInTheDocument()
+    expect(agentCatalog.getByText(/prioridad: 2/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText(/Pan — al menos 2 Harina/i)).not.toBeInTheDocument()
+    expect(agentCatalog.queryByText(/prioridad: 1/i)).not.toBeInTheDocument()
+  })
+
+  it('deletes an automatic rule and removes it from the agent', async () => {
+    const recipe = stores.recipeStore.create({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(recipe.ok).toBe(true)
+    if (!recipe.ok) return
+
+    const goodResult = stores.goodStore.findIdByName('Harina')
+    expect(goodResult.ok).toBe(true)
+    if (!goodResult.ok) return
+
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${recipe.recipe.id}`)
+    await user.selectOptions(ruleConditionGoodSelect(), goodResult.id)
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+
+    await user.click(deleteButton(agentCatalog))
+
+    expect(agentCatalog.queryByText(/Pan — al menos 2 Harina/i)).not.toBeInTheDocument()
+    expect(agentCatalog.queryByText(/prioridad: 1/i)).not.toBeInTheDocument()
+  })
+
+  it('orders automatic rules by priority', async () => {
+    const pan = stores.recipeStore.create({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(pan.ok).toBe(true)
+    if (!pan.ok) return
+
+    const tortilla = stores.recipeStore.create({
+      name: 'Tortilla',
+      inputs: [{ goodName: 'Huevos', quantity: 3 }],
+      outputs: [{ goodName: 'Tortilla', quantity: 1 }],
+    })
+    expect(tortilla.ok).toBe(true)
+    if (!tortilla.ok) return
+
+    const harinaResult = stores.goodStore.findIdByName('Harina')
+    const huevosResult = stores.goodStore.findIdByName('Huevos')
+    expect(harinaResult.ok).toBe(true)
+    expect(huevosResult.ok).toBe(true)
+    if (!harinaResult.ok || !huevosResult.ok) return
+
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${pan.recipe.id}`)
+    await user.selectOptions(ruleConditionGoodSelect(), harinaResult.id)
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.type(rulePriorityInput(), '2')
+    await user.click(saveRuleButton())
+
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${tortilla.recipe.id}`)
+    await user.selectOptions(ruleConditionGoodSelect(), huevosResult.id)
+    await user.clear(ruleConditionQuantityInput())
+    await user.type(ruleConditionQuantityInput(), '3')
+    await user.clear(rulePriorityInput())
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+
+    const rulesList = agentCatalog.getByRole('list', { name: /reglas del agente/i })
+    const ruleItems = within(rulesList).getAllByRole('listitem')
+    const ruleTexts = ruleItems.map((item) => item.textContent)
+    const panIndex = ruleTexts.findIndex((text) => text?.includes('Pan —'))
+    const tortillaIndex = ruleTexts.findIndex((text) => text?.includes('Tortilla —'))
+    expect(tortillaIndex).toBeLessThan(panIndex)
   })
 })

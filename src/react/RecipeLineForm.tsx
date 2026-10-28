@@ -1,5 +1,5 @@
-import type { Good } from '@/domain/recipeStore'
-import type { LineDraft } from '@/presentation/designModePresenter'
+import type { Good } from '@/domain/goodStore'
+import type { LineDraft } from '@/presentation/lineDraft'
 
 type RecipeLineFormProps = {
   legend: string

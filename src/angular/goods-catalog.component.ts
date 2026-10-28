@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import type { Good } from '@/domain/recipeStore'
+import type { Good } from '@/domain/goodStore'
 
 @Component({
   selector: 'app-goods-catalog',

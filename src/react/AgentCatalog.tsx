@@ -1,5 +1,5 @@
 import type { Agent, Rule } from '@/domain/agentStore'
-import type { Good } from '@/domain/recipeStore'
+import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
 
 type AgentCatalogProps = {
@@ -23,6 +23,10 @@ function recipeName(recipeRef: Rule['recipeRef'], catalogRecipes: Recipe[], agen
 
 function operatorLabel(operator: Rule['condition']['operator']): string {
   return operator === 'AT_LEAST' ? 'al menos' : 'menos de'
+}
+
+function goodName(goods: Good[], goodId: string): string {
+  return goods.find((g) => g.id === goodId)?.name ?? ''
 }
 
 export function AgentCatalog({
@@ -95,10 +99,10 @@ export function AgentCatalog({
               </ul>
             )}
             {selectedAgentId === agent.id && selectedAgentView === 'rules' && (
-              <ul>
+              <ul aria-label="Reglas del agente">
                 {agent.rules.map((rule) => (
                   <li key={rule.id}>
-                    {recipeName(rule.recipeRef, catalogRecipes, agent.recipes)} — {operatorLabel(rule.condition.operator)} {rule.condition.quantity} {rule.condition.goodName} (prioridad: {rule.priority})
+                    {recipeName(rule.recipeRef, catalogRecipes, agent.recipes)} — {operatorLabel(rule.condition.operator)} {rule.condition.quantity} {goodName(goods, rule.condition.goodId)} (prioridad: {rule.priority})
                     <button type="button" onClick={() => onEditRule(rule)}>
                       Editar
                     </button>

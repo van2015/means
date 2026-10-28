@@ -1,7 +1,7 @@
+import { generateId } from './id'
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
-import { goodStore } from './goodStore'
 
 export type FindRecipeResult =
   | { ok: true; recipe: Recipe }
@@ -83,11 +83,5 @@ export class RecipeStore {
     )
   }
 }
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2)
-}
-
-export const recipeStore = new RecipeStore(goodStore)
 
 export type { DraftLine, Good, Recipe, RecipeDraft, RecipeError, RecipeLine, RecipeResult } from './recipe'

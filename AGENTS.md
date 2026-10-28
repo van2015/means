@@ -17,6 +17,13 @@ The full backlog and detailed user stories live in [/docs/backlog.md](/docs/back
 - **Testing:** Vitest
 - **Target full-stack stack:** React + Node.js + SQLite (see backlog)
 
+## Architecture notes
+
+- **Domain stores** are created with `createStores()` and injected into presenters/components. Avoid using module-level singleton stores in new code.
+- **Presenters** are split by feature: `RecipePresenter`, `GoodPresenter`, `AgentPresenter`, `AgentRecipePresenter`, `AgentRulePresenter`. React's `useDesignMode` composes them and exposes a flat API to the UI.
+- **Entry points:** `index.html` serves the React design-mode app (`src/react/main.tsx`). `angular.html` still serves the Angular design-mode app (`src/angular/main.ts`).
+- **Rule engine:** a small `ruleEngine.ts` evaluates agent rules against inventory; it is the foundation for the upcoming play-mode loop.
+
 ## Commands
 
 - `npm run dev` — start Vite dev server

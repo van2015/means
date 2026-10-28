@@ -1,11 +1,16 @@
+import { createStores, type Stores } from '@/domain/stores'
+import { useDesignMode } from '@/presentation/useDesignMode'
 import { AgentCatalog } from './AgentCatalog'
 import { RecipeCatalog } from './RecipeCatalog'
 import { RecipeLineForm } from './RecipeLineForm'
 import { ValidationErrors } from './ValidationErrors'
-import { useDesignMode } from './useDesignMode'
 
-export function DesignMode() {
-  const presenter = useDesignMode()
+type DesignModeProps = {
+  stores?: Stores
+}
+
+export function DesignMode({ stores = createStores() }: DesignModeProps) {
+  const presenter = useDesignMode(stores)
 
   return (
     <div>
@@ -102,7 +107,7 @@ export function DesignMode() {
       <AgentCatalog
         agents={presenter.agents}
         goods={presenter.goods}
-        catalogRecipes={presenter.recipes}
+        catalogRecipes={presenter.catalogRecipes}
         selectedAgentId={presenter.selectedAgentId}
         selectedAgentView={presenter.selectedAgentView}
         onSelectAgent={presenter.selectAgent}
@@ -169,7 +174,7 @@ export function DesignMode() {
               >
                 <option value="">Seleccionar receta</option>
                 <optgroup label="Catálogo general">
-                  {presenter.recipes.map((recipe) => (
+                  {presenter.catalogRecipes.map((recipe) => (
                     <option key={recipe.id} value={`catalog:${recipe.id}`}>
                       {recipe.name}
                     </option>
@@ -188,14 +193,25 @@ export function DesignMode() {
             </label>
             <label>
               Bien de la condición
-              <input
-                value={presenter.agentRuleConditionGoodName}
-                onChange={(event) => presenter.setAgentRuleConditionGoodName(event.target.value)}
-              />
+              <select
+                value={presenter.agentRuleConditionGoodId}
+                onChange={(event) =>
+                  presenter.setAgentRuleConditionGoodId(event.target.value)
+                }
+              >
+                <option value="">Seleccionar bien</option>
+                {presenter.goods.map((good) => (
+                  <option key={good.id} value={good.id}>
+                    {good.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Cantidad de la condición
               <input
+                type="number"
+                min="1"
                 value={presenter.agentRuleConditionQuantity}
                 onChange={(event) => presenter.setAgentRuleConditionQuantity(event.target.value)}
               />
@@ -215,6 +231,7 @@ export function DesignMode() {
             <label>
               Prioridad de la regla
               <input
+                type="number"
                 value={presenter.agentRulePriority}
                 onChange={(event) => presenter.setAgentRulePriority(event.target.value)}
               />

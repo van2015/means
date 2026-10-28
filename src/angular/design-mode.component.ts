@@ -1,6 +1,8 @@
 import { ChangeDetectorRef, Component, type OnDestroy, type OnInit } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import { DesignModePresenter } from '@/presentation/designModePresenter'
+import { createStores, type Stores } from '@/domain/stores'
+import { GoodPresenter } from '@/presentation/goodPresenter'
+import { RecipePresenter } from '@/presentation/recipePresenter'
 import { GoodsCatalogComponent } from './goods-catalog.component'
 import { RecipeCatalogComponent } from './recipe-catalog.component'
 import { RecipeLineFormComponent } from './recipe-line-form.component'
@@ -20,12 +22,12 @@ import { ValidationErrorsComponent } from './validation-errors.component'
     <div>
       <h2>Modo diseño (Angular)</h2>
 
-      <form (ngSubmit)="presenter.submit()">
+      <form (ngSubmit)="recipePresenter.submit()">
         <label>
           Nombre
           <input
-            [ngModel]="presenter.name"
-            (ngModelChange)="presenter.setName($event)"
+            [ngModel]="recipePresenter.name"
+            (ngModelChange)="recipePresenter.setName($event)"
             name="recipeName"
           />
         </label>
@@ -35,10 +37,10 @@ import { ValidationErrorsComponent } from './validation-errors.component'
           lineLabel="insumo"
           addButtonLabel="entrada"
           listId="goods-list-inputs"
-          [lines]="presenter.inputs"
-          [goods]="presenter.goods"
-          (add)="presenter.addInput()"
-          (update)="presenter.updateInput($event.index, $event.field, $event.value)"
+          [lines]="recipePresenter.inputs"
+          [goods]="recipePresenter.goods"
+          (add)="recipePresenter.addInput()"
+          (update)="recipePresenter.updateInput($event.index, $event.field, $event.value)"
         />
 
         <app-recipe-line-form
@@ -46,47 +48,58 @@ import { ValidationErrorsComponent } from './validation-errors.component'
           lineLabel="producto"
           addButtonLabel="salida"
           listId="goods-list-outputs"
-          [lines]="presenter.outputs"
-          [goods]="presenter.goods"
-          (add)="presenter.addOutput()"
-          (update)="presenter.updateOutput($event.index, $event.field, $event.value)"
+          [lines]="recipePresenter.outputs"
+          [goods]="recipePresenter.goods"
+          (add)="recipePresenter.addOutput()"
+          (update)="recipePresenter.updateOutput($event.index, $event.field, $event.value)"
         />
 
         <button type="submit">Guardar receta</button>
       </form>
 
-      <app-validation-errors [errors]="presenter.errors" />
+      <app-validation-errors [errors]="recipePresenter.errors" />
 
       <app-recipe-catalog
-        [recipes]="presenter.recipes"
-        [goods]="presenter.goods"
-        (edit)="presenter.startEdit($event)"
-        (delete)="presenter.deleteRecipe($event)"
+        [recipes]="recipePresenter.recipes"
+        [goods]="recipePresenter.goods"
+        (edit)="recipePresenter.startEdit($event)"
+        (delete)="recipePresenter.deleteRecipe($event)"
       />
 
       <app-goods-catalog
-        [goodName]="presenter.goodName"
-        [goods]="presenter.goods"
-        [goodError]="presenter.goodError"
-        (goodNameChange)="presenter.setGoodName($event)"
-        (register)="presenter.registerGood()"
+        [goodName]="goodPresenter.goodName"
+        [goods]="goodPresenter.goods"
+        [goodError]="goodPresenter.goodError"
+        (goodNameChange)="goodPresenter.setGoodName($event)"
+        (register)="goodPresenter.registerGood()"
       />
     </div>
   `,
 })
 export class DesignModeComponent implements OnInit, OnDestroy {
-  presenter = new DesignModePresenter()
+  private stores: Stores
+  recipePresenter: RecipePresenter
+  goodPresenter: GoodPresenter
   private unsubscribe: (() => void) | null = null
   private changeDetector: ChangeDetectorRef
 
   constructor(changeDetector: ChangeDetectorRef) {
     this.changeDetector = changeDetector
+    this.stores = createStores()
+    this.recipePresenter = new RecipePresenter(this.stores)
+    this.goodPresenter = new GoodPresenter(this.stores)
   }
 
   ngOnInit(): void {
-    this.unsubscribe = this.presenter.subscribe(() => {
+    const notify = () => {
       this.changeDetector.detectChanges()
-    })
+    }
+    const unsubscribeRecipe = this.recipePresenter.subscribe(notify)
+    const unsubscribeGood = this.goodPresenter.subscribe(notify)
+    this.unsubscribe = () => {
+      unsubscribeRecipe()
+      unsubscribeGood()
+    }
   }
 
   ngOnDestroy(): void {

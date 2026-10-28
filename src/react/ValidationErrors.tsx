@@ -1,37 +1,21 @@
 import type { AgentError, RuleError } from '@/domain/agent'
-import type { RecipeError } from '@/domain/recipeStore'
+import type { RecipeError } from '@/domain/recipe'
+import { errorMessage } from '@/i18n/errors'
 
 type ValidationError = RecipeError | AgentError | RuleError
-
-function errorMessage(error: ValidationError): string {
-  switch (error.code) {
-    case 'NO_INPUTS':
-      return 'Se requiere al menos una entrada'
-    case 'NO_OUTPUTS':
-      return 'Se requiere al menos una salida'
-    case 'INVALID_QUANTITY':
-      return `La cantidad de ${error.goodName} debe ser mayor que cero`
-    case 'RECIPE_NOT_FOUND':
-      return 'Receta no encontrada'
-    case 'EMPTY_NAME':
-      return 'El nombre no puede estar vacío'
-    case 'NO_RECIPE':
-      return 'Se requiere una receta'
-    case 'NO_CONDITION_GOOD':
-      return 'Se requiere un bien para la condición'
-    case 'INVALID_CONDITION_QUANTITY':
-      return 'La cantidad de la condición debe ser mayor que cero'
-  }
-}
 
 export function ValidationErrors({ errors }: { errors: ValidationError[] }) {
   if (errors.length === 0) return null
 
   return (
     <ul role="list" aria-label="Errores de validación">
-      {errors.map((error, index) => (
-        <li key={index}>{errorMessage(error)}</li>
-      ))}
+      {errors.map((error, index) => {
+        const key =
+          'goodName' in error
+            ? `${error.code}-${error.goodName}`
+            : `${error.code}-${index}`
+        return <li key={key}>{errorMessage(error)}</li>
+      })}
     </ul>
   )
 }

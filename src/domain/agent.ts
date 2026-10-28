@@ -2,6 +2,8 @@ import type { DraftLine, Good, RecipeLine } from './recipe'
 
 import type { Recipe } from './recipe'
 
+export type InventoryLine = RecipeLine
+
 export type AgentError =
   | { code: 'EMPTY_NAME' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
@@ -18,7 +20,7 @@ export type AgentResult =
 export type RuleConditionOperator = 'AT_LEAST' | 'LESS_THAN'
 
 export type RuleCondition = {
-  goodName: string
+  goodId: string
   quantity: number
   operator: RuleConditionOperator
 }
@@ -43,14 +45,14 @@ export type RuleError =
 export class Agent {
   readonly id: string
   readonly name: string
-  readonly inventory: RecipeLine[]
+  readonly inventory: InventoryLine[]
   readonly recipes: Recipe[]
   readonly rules: Rule[]
 
   constructor(
     id: string,
     name: string,
-    inventory: RecipeLine[],
+    inventory: InventoryLine[],
     recipes: Recipe[] = [],
     rules: Rule[] = [],
   ) {
@@ -65,6 +67,12 @@ export class Agent {
     return this.inventory.some(
       (line) => line.goodId === good.id && line.quantity === quantity,
     )
+  }
+
+  quantityOf(goodId: string): number {
+    return this.inventory
+      .filter((line) => line.goodId === goodId)
+      .reduce((total, line) => total + line.quantity, 0)
   }
 }
 
@@ -91,7 +99,7 @@ export function validateRule(recipeId: string, condition: RuleCondition): RuleEr
     errors.push({ code: 'NO_RECIPE' })
   }
 
-  if (condition.goodName.trim() === '') {
+  if (condition.goodId.trim() === '') {
     errors.push({ code: 'NO_CONDITION_GOOD' })
   }
 

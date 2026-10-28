@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core'
 import { FormsModule } from '@angular/forms'
-import type { Good } from '@/domain/recipeStore'
-import type { LineDraft } from '@/presentation/designModePresenter'
+import type { Good } from '@/domain/goodStore'
+import type { LineDraft } from '@/presentation/lineDraft'
 
 @Component({
   selector: 'app-recipe-line-form',

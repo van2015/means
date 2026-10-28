@@ -112,7 +112,7 @@ export function ruleRecipeSelect(): HTMLElement {
   return screen.getByLabelText(/receta de la regla/i)
 }
 
-export function ruleConditionGoodInput(): HTMLElement {
+export function ruleConditionGoodSelect(): HTMLElement {
   return screen.getByLabelText(/bien de la condición/i)
 }
 

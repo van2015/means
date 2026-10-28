@@ -1,3 +1,4 @@
+import { generateId } from './id'
 import type { Good } from './recipe'
 
 export type { Good }
@@ -62,9 +63,3 @@ export class GoodStore {
     return created
   }
 }
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2)
-}
-
-export const goodStore = new GoodStore()
