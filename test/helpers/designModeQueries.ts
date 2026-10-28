@@ -24,6 +24,10 @@ export function recipeInputQuantity(index: number): HTMLElement {
   return screen.getByLabelText(new RegExp(`cantidad del insumo ${index}`, 'i'))
 }
 
+export function removeRecipeInputButton(index: number): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(`eliminar insumo ${index}`, 'i') })
+}
+
 export function addRecipeOutputButton(): HTMLElement {
   return screen.getByRole('button', { name: /agregar salida/i })
 }
@@ -34,6 +38,10 @@ export function recipeOutputGoodName(index: number): HTMLElement {
 
 export function recipeOutputQuantity(index: number): HTMLElement {
   return screen.getByLabelText(new RegExp(`cantidad del producto ${index}`, 'i'))
+}
+
+export function removeRecipeOutputButton(index: number): HTMLElement {
+  return screen.getByRole('button', { name: new RegExp(`eliminar producto ${index}`, 'i') })
 }
 
 export function saveRecipeButton(): HTMLElement {

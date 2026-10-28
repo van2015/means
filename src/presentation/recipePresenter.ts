@@ -64,6 +64,11 @@ export class RecipePresenter extends Presenter {
     this.notify()
   }
 
+  removeInput(index: number): void {
+    this.inputsValue = this.inputsValue.filter((_, lineIndex) => lineIndex !== index)
+    this.notify()
+  }
+
   addOutput(): void {
     this.outputsValue = [...this.outputsValue, { goodName: '', quantity: '' }]
     this.notify()
@@ -73,6 +78,11 @@ export class RecipePresenter extends Presenter {
     const next = [...this.outputsValue]
     next[index][field] = value
     this.outputsValue = next
+    this.notify()
+  }
+
+  removeOutput(index: number): void {
+    this.outputsValue = this.outputsValue.filter((_, lineIndex) => lineIndex !== index)
     this.notify()
   }
 

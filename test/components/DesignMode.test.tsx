@@ -26,9 +26,11 @@ import {
   recipeInputGoodName,
   recipeInputQuantity,
   recipeNameInput,
+  removeRecipeInputButton,
   recipeOutputGoodName,
   recipeOutputQuantity,
   registerGoodButton,
+  removeRecipeOutputButton,
   ruleConditionGoodSelect,
   ruleConditionOperatorSelect,
   ruleConditionQuantityInput,
@@ -81,6 +83,44 @@ describe('DesignMode', () => {
     expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText(/pan: 1/i)).toBeInTheDocument()
+  })
+
+  it('removes an input line while creating a recipe', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
+
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(2), 'Huevos')
+    await user.type(recipeInputQuantity(2), '3')
+
+    await user.click(removeRecipeInputButton(1))
+
+    expect(screen.queryByLabelText(/nombre del insumo 2/i)).not.toBeInTheDocument()
+    expect(recipeInputGoodName(1)).toHaveValue('Huevos')
+    expect(recipeInputQuantity(1)).toHaveValue(3)
+  })
+
+  it('removes an output line while creating a recipe', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(2), 'Tortilla')
+    await user.type(recipeOutputQuantity(2), '2')
+
+    await user.click(removeRecipeOutputButton(1))
+
+    expect(screen.queryByLabelText(/nombre del producto 2/i)).not.toBeInTheDocument()
+    expect(recipeOutputGoodName(1)).toHaveValue('Tortilla')
+    expect(recipeOutputQuantity(1)).toHaveValue(2)
   })
 
   it('loads a recipe into the form when clicking edit', async () => {

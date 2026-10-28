@@ -71,9 +71,11 @@ export function useDesignMode(stores: Stores) {
     addInput: () => recipePresenter.addInput(),
     updateInput: (index: number, field: keyof LineDraft, value: string) =>
       recipePresenter.updateInput(index, field, value),
+    removeInput: (index: number) => recipePresenter.removeInput(index),
     addOutput: () => recipePresenter.addOutput(),
     updateOutput: (index: number, field: keyof LineDraft, value: string) =>
       recipePresenter.updateOutput(index, field, value),
+    removeOutput: (index: number) => recipePresenter.removeOutput(index),
     deleteRecipe: (id: string) => recipePresenter.deleteRecipe(id),
     startEdit: (recipe: Parameters<RecipePresenter['startEdit']>[0]) =>
       recipePresenter.startEdit(recipe),

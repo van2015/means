@@ -38,6 +38,7 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
           goods={presenter.goods}
           onAdd={presenter.addInput}
           onUpdate={presenter.updateInput}
+          onRemove={presenter.removeInput}
         />
         <RecipeLineForm
           legend="Salidas"
@@ -48,6 +49,7 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
           goods={presenter.goods}
           onAdd={presenter.addOutput}
           onUpdate={presenter.updateOutput}
+          onRemove={presenter.removeOutput}
         />
         <button type="submit">Guardar receta</button>
       </form>
