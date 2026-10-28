@@ -24,25 +24,27 @@ describe('RecipeStore', () => {
     expect(result.ok).toBe(true)
     expect(store.count()).toBe(1)
 
-    const recipe = store.findByName('Pan')
-    expect(recipe).toBeDefined()
+    const recipeResult = store.findByName('Pan')
+    expect(recipeResult.ok).toBe(true)
+    if (!recipeResult.ok) return
+    const recipe = recipeResult.recipe
 
-    const flourId = goodStore.findIdByName('Harina')
-    const breadId = goodStore.findIdByName('Pan')
-    expect(flourId).toBeDefined()
-    expect(breadId).toBeDefined()
+    const flourResult = goodStore.findIdByName('Harina')
+    const breadResult = goodStore.findIdByName('Pan')
+    expect(flourResult.ok).toBe(true)
+    expect(breadResult.ok).toBe(true)
 
-    if (recipe && flourId && breadId) {
-      const flour = goodStore.get(flourId)
-      const bread = goodStore.get(breadId)
-      expect(flour).toBeDefined()
-      expect(bread).toBeDefined()
+    if (!recipe || !flourResult.ok || !breadResult.ok) return
 
-      if (flour && bread) {
-        expect(recipe.consumes(flour, 2)).toBe(true)
-        expect(recipe.produces(bread, 1)).toBe(true)
-      }
-    }
+    const flourResult2 = goodStore.get(flourResult.id)
+    const breadResult2 = goodStore.get(breadResult.id)
+    expect(flourResult2.ok).toBe(true)
+    expect(breadResult2.ok).toBe(true)
+
+    if (!flourResult2.ok || !breadResult2.ok) return
+
+    expect(recipe.consumes(flourResult2.good, 2)).toBe(true)
+    expect(recipe.produces(breadResult2.good, 1)).toBe(true)
   })
 
   it('rejects a recipe without inputs', () => {
@@ -111,7 +113,11 @@ describe('RecipeStore', () => {
     store.delete(created.recipe.id)
 
     expect(store.count()).toBe(0)
-    expect(store.findByName('Pan')).toBeUndefined()
+    const notFound = store.findByName('Pan')
+    expect(notFound.ok).toBe(false)
+    if (!notFound.ok) {
+      expect(notFound.error).toBe('RECIPE_NOT_FOUND')
+    }
   })
 
   it('update rejects invalid drafts and leaves the original untouched', () => {
@@ -138,9 +144,10 @@ describe('RecipeStore', () => {
       { code: 'INVALID_QUANTITY', goodName: 'Pan' },
     ])
 
-    const original = store.findByName('Pan')
-    expect(original).toBeDefined()
-    expect(original?.id).toBe(created.recipe.id)
+    const originalResult = store.findByName('Pan')
+    expect(originalResult.ok).toBe(true)
+    if (!originalResult.ok) return
+    expect(originalResult.recipe.id).toBe(created.recipe.id)
   })
 
   it('updates an existing recipe and keeps the same id', () => {
@@ -166,25 +173,26 @@ describe('RecipeStore', () => {
     expect(result.recipe.id).toBe(created.recipe.id)
     expect(result.recipe.name).toBe('Pan integral')
 
-    const flourId = goodStore.findIdByName('Harina integral')
-    const breadId = goodStore.findIdByName('Pan integral')
-    expect(flourId).toBeDefined()
-    expect(breadId).toBeDefined()
+    const flourResult = goodStore.findIdByName('Harina integral')
+    const breadResult = goodStore.findIdByName('Pan integral')
+    expect(flourResult.ok).toBe(true)
+    expect(breadResult.ok).toBe(true)
 
-    if (flourId && breadId) {
-      const flour = goodStore.get(flourId)
-      const bread = goodStore.get(breadId)
-      expect(flour).toBeDefined()
-      expect(bread).toBeDefined()
-      if (flour && bread) {
-        expect(result.recipe.consumes(flour, 3)).toBe(true)
-        expect(result.recipe.produces(bread, 1)).toBe(true)
-      }
-    }
+    if (!flourResult.ok || !breadResult.ok) return
 
-    const catalogRecipe = store.findByName('Pan integral')
-    expect(catalogRecipe).toBeDefined()
-    expect(catalogRecipe?.id).toBe(created.recipe.id)
+    const flourResult2 = goodStore.get(flourResult.id)
+    const breadResult2 = goodStore.get(breadResult.id)
+    expect(flourResult2.ok).toBe(true)
+    expect(breadResult2.ok).toBe(true)
+    if (!flourResult2.ok || !breadResult2.ok) return
+
+    expect(result.recipe.consumes(flourResult2.good, 3)).toBe(true)
+    expect(result.recipe.produces(breadResult2.good, 1)).toBe(true)
+
+    const catalogRecipeResult = store.findByName('Pan integral')
+    expect(catalogRecipeResult.ok).toBe(true)
+    if (!catalogRecipeResult.ok) return
+    expect(catalogRecipeResult.recipe.id).toBe(created.recipe.id)
   })
 
   it('createGood rejects empty names and leaves catalog unchanged', () => {
@@ -230,17 +238,17 @@ describe('RecipeStore', () => {
     expect(goodStore.hasNamed('Harina')).toBe(true)
     expect(goodStore.hasNamed('Pan')).toBe(true)
 
-    const flourId = goodStore.findIdByName('Harina')
-    expect(flourId).toBeDefined()
+    const flourResult = goodStore.findIdByName('Harina')
+    expect(flourResult.ok).toBe(true)
 
-    const producer = store.findByName('Harina de trigo')
-    const consumer = store.findByName('Pan')
-    expect(producer).toBeDefined()
-    expect(consumer).toBeDefined()
+    const producerResult = store.findByName('Harina de trigo')
+    const consumerResult = store.findByName('Pan')
+    expect(producerResult.ok).toBe(true)
+    expect(consumerResult.ok).toBe(true)
 
-    if (producer && consumer && flourId) {
-      expect(producer.usesGoodAsOutput(flourId)).toBe(true)
-      expect(consumer.usesGoodAsInput(flourId)).toBe(true)
-    }
+    if (!producerResult.ok || !consumerResult.ok || !flourResult.ok) return
+
+    expect(producerResult.recipe.usesGoodAsOutput(flourResult.id)).toBe(true)
+    expect(consumerResult.recipe.usesGoodAsInput(flourResult.id)).toBe(true)
   })
 })

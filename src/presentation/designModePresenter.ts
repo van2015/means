@@ -155,14 +155,20 @@ export class DesignModePresenter {
   startEdit(recipe: Recipe): void {
     this.editingIdValue = recipe.id
     this.nameValue = recipe.name
-    this.inputsValue = recipe.inputs.map((line) => ({
-      goodName: goodStore.get(line.goodId)?.name ?? '',
-      quantity: String(line.quantity),
-    }))
-    this.outputsValue = recipe.outputs.map((line) => ({
-      goodName: goodStore.get(line.goodId)?.name ?? '',
-      quantity: String(line.quantity),
-    }))
+    this.inputsValue = recipe.inputs.map((line) => {
+      const result = goodStore.get(line.goodId)
+      return {
+        goodName: result.ok ? result.good.name : '',
+        quantity: String(line.quantity),
+      }
+    })
+    this.outputsValue = recipe.outputs.map((line) => {
+      const result = goodStore.get(line.goodId)
+      return {
+        goodName: result.ok ? result.good.name : '',
+        quantity: String(line.quantity),
+      }
+    })
     this.notify()
   }
 
@@ -330,14 +336,20 @@ export class DesignModePresenter {
   startEditAgentRecipe(recipe: Recipe): void {
     this.agentRecipeEditingIdValue = recipe.id
     this.agentRecipeNameValue = recipe.name
-    this.agentRecipeInputsValue = recipe.inputs.map((line) => ({
-      goodName: goodStore.get(line.goodId)?.name ?? '',
-      quantity: String(line.quantity),
-    }))
-    this.agentRecipeOutputsValue = recipe.outputs.map((line) => ({
-      goodName: goodStore.get(line.goodId)?.name ?? '',
-      quantity: String(line.quantity),
-    }))
+    this.agentRecipeInputsValue = recipe.inputs.map((line) => {
+      const result = goodStore.get(line.goodId)
+      return {
+        goodName: result.ok ? result.good.name : '',
+        quantity: String(line.quantity),
+      }
+    })
+    this.agentRecipeOutputsValue = recipe.outputs.map((line) => {
+      const result = goodStore.get(line.goodId)
+      return {
+        goodName: result.ok ? result.good.name : '',
+        quantity: String(line.quantity),
+      }
+    })
     this.notify()
   }
 

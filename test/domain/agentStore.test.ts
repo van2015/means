@@ -23,25 +23,28 @@ describe('AgentStore', () => {
     expect(result.ok).toBe(true)
     expect(store.count()).toBe(1)
 
-    const agent = store.findByName('Panadero')
-    expect(agent).toBeDefined()
+    const agentResult = store.findByName('Panadero')
+    expect(agentResult.ok).toBe(true)
+    if (!agentResult.ok) return
 
-    const flourId = goodStore.findIdByName('Harina')
-    const breadId = goodStore.findIdByName('Pan')
-    expect(flourId).toBeDefined()
-    expect(breadId).toBeDefined()
+    const agent = agentResult.agent
 
-    if (agent && flourId && breadId) {
-      const flour = goodStore.get(flourId)
-      const bread = goodStore.get(breadId)
-      expect(flour).toBeDefined()
-      expect(bread).toBeDefined()
+    const flourResult = goodStore.findIdByName('Harina')
+    const breadResult = goodStore.findIdByName('Pan')
+    expect(flourResult.ok).toBe(true)
+    expect(breadResult.ok).toBe(true)
 
-      if (flour && bread) {
-        expect(agent.has(flour, 10)).toBe(true)
-        expect(agent.has(bread, 5)).toBe(true)
-      }
-    }
+    if (!flourResult.ok || !breadResult.ok) return
+
+    const flourResult2 = goodStore.get(flourResult.id)
+    const breadResult2 = goodStore.get(breadResult.id)
+    expect(flourResult2.ok).toBe(true)
+    expect(breadResult2.ok).toBe(true)
+
+    if (!flourResult2.ok || !breadResult2.ok) return
+
+    expect(agent.has(flourResult2.good, 10)).toBe(true)
+    expect(agent.has(breadResult2.good, 5)).toBe(true)
   })
 
   it('rejects an agent with an empty name and leaves catalog unchanged', () => {

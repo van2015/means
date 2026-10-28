@@ -3,6 +3,10 @@ import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
 import { goodStore } from './goodStore'
 
+export type FindRecipeResult =
+  | { ok: true; recipe: Recipe }
+  | { ok: false; error: 'RECIPE_NOT_FOUND' }
+
 export class RecipeStore {
   private recipes: Recipe[] = []
   private goodStore: GoodStore
@@ -23,8 +27,12 @@ export class RecipeStore {
     return this.recipes.length
   }
 
-  findByName(name: string): Recipe | undefined {
-    return this.recipes.find((r) => r.name === name)
+  findByName(name: string): FindRecipeResult {
+    const recipe = this.recipes.find((r) => r.name === name)
+    if (recipe === undefined) {
+      return { ok: false, error: 'RECIPE_NOT_FOUND' }
+    }
+    return { ok: true, recipe }
   }
 
   create(draft: RecipeDraft): RecipeResult {

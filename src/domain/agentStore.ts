@@ -5,6 +5,10 @@ import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
 import { goodStore } from './goodStore'
 
+export type FindAgentResult =
+  | { ok: true; agent: Agent }
+  | { ok: false; error: 'AGENT_NOT_FOUND' }
+
 export class AgentStore {
   private agents: Agent[] = []
   private goodStore: GoodStore
@@ -25,12 +29,20 @@ export class AgentStore {
     return this.agents
   }
 
-  findByName(name: string): Agent | undefined {
-    return this.agents.find((a) => a.name === name)
+  findByName(name: string): FindAgentResult {
+    const agent = this.agents.find((a) => a.name === name)
+    if (agent === undefined) {
+      return { ok: false, error: 'AGENT_NOT_FOUND' }
+    }
+    return { ok: true, agent }
   }
 
-  findById(id: string): Agent | undefined {
-    return this.agents.find((a) => a.id === id)
+  findById(id: string): FindAgentResult {
+    const agent = this.agents.find((a) => a.id === id)
+    if (agent === undefined) {
+      return { ok: false, error: 'AGENT_NOT_FOUND' }
+    }
+    return { ok: true, agent }
   }
 
   create(draft: AgentDraft): AgentResult {
@@ -59,14 +71,14 @@ export class AgentStore {
       return { ok: false, errors }
     }
 
-    const agent = this.findById(agentId)
-    if (!agent) {
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
     }
 
     const recipe = this.buildRecipe(generateId(), draft)
-    const updatedRecipes = [...agent.recipes, recipe]
-    this.replaceAgent(agent, updatedRecipes)
+    const updatedRecipes = [...agentResult.agent.recipes, recipe]
+    this.replaceAgent(agentResult.agent, updatedRecipes)
     return { ok: true, recipe }
   }
 
@@ -76,29 +88,29 @@ export class AgentStore {
       return { ok: false, errors }
     }
 
-    const agent = this.findById(agentId)
-    if (!agent) {
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
     }
 
-    const index = agent.recipes.findIndex((recipe) => recipe.id === recipeId)
+    const index = agentResult.agent.recipes.findIndex((recipe) => recipe.id === recipeId)
     if (index === -1) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
     }
 
     const recipe = this.buildRecipe(recipeId, draft)
-    const updatedRecipes = [...agent.recipes]
+    const updatedRecipes = [...agentResult.agent.recipes]
     updatedRecipes[index] = recipe
-    this.replaceAgent(agent, updatedRecipes)
+    this.replaceAgent(agentResult.agent, updatedRecipes)
     return { ok: true, recipe }
   }
 
   deleteRecipe(agentId: string, recipeId: string): void {
-    const agent = this.findById(agentId)
-    if (!agent) return
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) return
 
-    const updatedRecipes = agent.recipes.filter((recipe) => recipe.id !== recipeId)
-    this.replaceAgent(agent, updatedRecipes)
+    const updatedRecipes = agentResult.agent.recipes.filter((recipe) => recipe.id !== recipeId)
+    this.replaceAgent(agentResult.agent, updatedRecipes)
   }
 
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
