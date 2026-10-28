@@ -351,6 +351,28 @@ describe('DesignMode', () => {
     expect(agentCatalog.queryByText(/harina: 10/i)).not.toBeInTheDocument()
   })
 
+  it('keeps the remaining inventory line mounted when removing an earlier line', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(2), 'Huevos')
+    await user.type(agentInventoryQuantity(2), '3')
+
+    const remainingGoodName = agentInventoryGoodName(2)
+    const remainingQuantity = agentInventoryQuantity(2)
+
+    await user.click(removeAgentInventoryLineButton(1))
+
+    // Stable keys keep the surviving row's DOM mounted instead of reusing the removed row.
+    expect(agentInventoryGoodName(1)).toBe(remainingGoodName)
+    expect(agentInventoryQuantity(1)).toBe(remainingQuantity)
+  })
+
   it('displays existing agents with their name and initial inventory', () => {
     stores.agentStore.create({
       name: 'Panadero',

@@ -2,7 +2,7 @@ import type { AgentStore } from '@/domain/agentStore'
 import type { Good, GoodStore } from '@/domain/goodStore'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from '@/domain/recipeStore'
 import { Presenter } from './presenter'
-import type { LineDraft } from './lineDraft'
+import { createLineDraft, type LineDraft, type LineDraftField } from './lineDraft'
 
 export class AgentRecipePresenter extends Presenter {
   private agentStore: AgentStore
@@ -50,11 +50,11 @@ export class AgentRecipePresenter extends Presenter {
   }
 
   addInput(): void {
-    this.inputsValue = [...this.inputsValue, { goodName: '', quantity: '' }]
+    this.inputsValue = [...this.inputsValue, createLineDraft()]
     this.notify()
   }
 
-  updateInput(index: number, field: keyof LineDraft, value: string): void {
+  updateInput(index: number, field: LineDraftField, value: string): void {
     const next = [...this.inputsValue]
     next[index][field] = value
     this.inputsValue = next
@@ -62,11 +62,11 @@ export class AgentRecipePresenter extends Presenter {
   }
 
   addOutput(): void {
-    this.outputsValue = [...this.outputsValue, { goodName: '', quantity: '' }]
+    this.outputsValue = [...this.outputsValue, createLineDraft()]
     this.notify()
   }
 
-  updateOutput(index: number, field: keyof LineDraft, value: string): void {
+  updateOutput(index: number, field: LineDraftField, value: string): void {
     const next = [...this.outputsValue]
     next[index][field] = value
     this.outputsValue = next
@@ -126,10 +126,7 @@ export class AgentRecipePresenter extends Presenter {
 
   private toLineDraft(line: { goodId: string; quantity: number }): LineDraft {
     const result = this.goodStore.get(line.goodId)
-    return {
-      goodName: result.ok ? result.good.name : '',
-      quantity: String(line.quantity),
-    }
+    return createLineDraft(result.ok ? result.good.name : '', String(line.quantity))
   }
 
   private resetForm(): void {

@@ -1,5 +1,5 @@
 import type { Good } from '@/domain/goodStore'
-import type { LineDraft } from '@/presentation/lineDraft'
+import type { LineDraft, LineDraftField } from '@/presentation/lineDraft'
 
 type RecipeLineFormProps = {
   legend: string
@@ -9,9 +9,8 @@ type RecipeLineFormProps = {
   lines: LineDraft[]
   goods: Good[]
   onAdd: () => void
-  onUpdate: (index: number, field: keyof LineDraft, value: string) => void
+  onUpdate: (index: number, field: LineDraftField, value: string) => void
   onRemove?: (index: number) => void
-  removeLabel?: string
 }
 
 export function RecipeLineForm({
@@ -24,13 +23,12 @@ export function RecipeLineForm({
   onAdd,
   onUpdate,
   onRemove,
-  removeLabel,
 }: RecipeLineFormProps) {
   return (
-    <fieldset>
+    <fieldset className="line-form">
       <legend>{legend}</legend>
       {lines.map((line, index) => (
-        <div key={index}>
+        <div className="line-row" key={line.id}>
           <label>
             Nombre del {lineLabel} {index + 1}
             <input
@@ -49,12 +47,8 @@ export function RecipeLineForm({
             />
           </label>
           {onRemove && (
-            <button
-              type="button"
-              aria-label={`Eliminar ${removeLabel ?? lineLabel} ${index + 1}`}
-              onClick={() => onRemove(index)}
-            >
-              Eliminar
+            <button type="button" onClick={() => onRemove(index)}>
+              Eliminar {lineLabel} {index + 1}
             </button>
           )}
         </div>

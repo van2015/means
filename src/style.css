@@ -122,7 +122,6 @@ main > div > form {
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
-  align-items: start;
 }
 
 main > div > form > label,
@@ -254,8 +253,9 @@ select option {
   background: var(--panel-alt);
 }
 
-fieldset {
+.line-form {
   display: grid;
+  align-self: start;
   align-content: start;
   align-items: start;
   gap: 12px;
@@ -266,7 +266,7 @@ fieldset {
   border: 2px solid var(--border);
 }
 
-legend {
+.line-form > legend {
   padding: 0 8px;
   color: var(--accent);
   font-family: 'Press Start 2P', 'Courier New', monospace;
@@ -275,15 +275,15 @@ legend {
   text-transform: uppercase;
 }
 
-fieldset > div {
+.line-form > .line-row {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
 
-fieldset > div > button,
-fieldset > button,
+.line-row > button,
+.line-form > button,
 section form > button {
   justify-self: start;
 }
@@ -398,7 +398,7 @@ img {
     font-size: 22px;
   }
 
-  fieldset > div {
+  .line-form > .line-row {
     grid-template-columns: 1fr;
   }
 }

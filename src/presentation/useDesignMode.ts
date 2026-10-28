@@ -5,7 +5,7 @@ import { AgentPresenter } from './agentPresenter'
 import { AgentRecipePresenter } from './agentRecipePresenter'
 import { AgentRulePresenter } from './agentRulePresenter'
 import { GoodPresenter } from './goodPresenter'
-import type { LineDraft } from './lineDraft'
+import type { LineDraftField } from './lineDraft'
 import { RecipePresenter } from './recipePresenter'
 
 export function useDesignMode(stores: Stores) {
@@ -69,11 +69,11 @@ export function useDesignMode(stores: Stores) {
     agentRuleEditingId: agentRulePresenter.editingId,
     setName: (name: string) => recipePresenter.setName(name),
     addInput: () => recipePresenter.addInput(),
-    updateInput: (index: number, field: keyof LineDraft, value: string) =>
+    updateInput: (index: number, field: LineDraftField, value: string) =>
       recipePresenter.updateInput(index, field, value),
     removeInput: (index: number) => recipePresenter.removeInput(index),
     addOutput: () => recipePresenter.addOutput(),
-    updateOutput: (index: number, field: keyof LineDraft, value: string) =>
+    updateOutput: (index: number, field: LineDraftField, value: string) =>
       recipePresenter.updateOutput(index, field, value),
     removeOutput: (index: number) => recipePresenter.removeOutput(index),
     deleteRecipe: (id: string) => recipePresenter.deleteRecipe(id),
@@ -84,7 +84,7 @@ export function useDesignMode(stores: Stores) {
     registerGood: () => goodPresenter.registerGood(),
     setAgentName: (name: string) => agentPresenter.setName(name),
     addAgentInventoryLine: () => agentPresenter.addInventoryLine(),
-    updateAgentInventoryLine: (index: number, field: keyof LineDraft, value: string) =>
+    updateAgentInventoryLine: (index: number, field: LineDraftField, value: string) =>
       agentPresenter.updateInventoryLine(index, field, value),
     removeAgentInventoryLine: (index: number) => agentPresenter.removeInventoryLine(index),
     submitAgent: () => agentPresenter.submit(),
@@ -92,10 +92,10 @@ export function useDesignMode(stores: Stores) {
     selectAgentRules,
     setAgentRecipeName: (name: string) => agentRecipePresenter.setName(name),
     addAgentRecipeInput: () => agentRecipePresenter.addInput(),
-    updateAgentRecipeInput: (index: number, field: keyof LineDraft, value: string) =>
+    updateAgentRecipeInput: (index: number, field: LineDraftField, value: string) =>
       agentRecipePresenter.updateInput(index, field, value),
     addAgentRecipeOutput: () => agentRecipePresenter.addOutput(),
-    updateAgentRecipeOutput: (index: number, field: keyof LineDraft, value: string) =>
+    updateAgentRecipeOutput: (index: number, field: LineDraftField, value: string) =>
       agentRecipePresenter.updateOutput(index, field, value),
     submitAgentRecipe: () => agentRecipePresenter.submit(),
     startEditAgentRecipe: (recipe: Parameters<AgentRecipePresenter['startEdit']>[0]) =>

@@ -74,7 +74,7 @@ export function agentInventoryQuantity(index: number): HTMLElement {
 
 export function removeAgentInventoryLineButton(index: number): HTMLElement {
   return screen.getByRole('button', {
-    name: new RegExp(`eliminar línea de inventario ${index}`, 'i'),
+    name: new RegExp(`eliminar bien ${index}`, 'i'),
   })
 }
 

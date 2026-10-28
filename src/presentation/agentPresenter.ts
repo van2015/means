@@ -1,7 +1,7 @@
 import type { Agent, AgentError, AgentResult } from '@/domain/agent'
 import type { AgentStore } from '@/domain/agentStore'
 import { Presenter } from './presenter'
-import { removeLineAt, type LineDraft } from './lineDraft'
+import { createLineDraft, removeLineAt, type LineDraft, type LineDraftField } from './lineDraft'
 
 export class AgentPresenter extends Presenter {
   private agentStore: AgentStore
@@ -46,11 +46,11 @@ export class AgentPresenter extends Presenter {
   }
 
   addInventoryLine(): void {
-    this.inventoryValue = [...this.inventoryValue, { goodName: '', quantity: '' }]
+    this.inventoryValue = [...this.inventoryValue, createLineDraft()]
     this.notify()
   }
 
-  updateInventoryLine(index: number, field: keyof LineDraft, value: string): void {
+  updateInventoryLine(index: number, field: LineDraftField, value: string): void {
     const next = [...this.inventoryValue]
     next[index][field] = value
     this.inventoryValue = next
@@ -59,6 +59,7 @@ export class AgentPresenter extends Presenter {
 
   removeInventoryLine(index: number): void {
     this.inventoryValue = removeLineAt(this.inventoryValue, index)
+    this.errorsValue = []
     this.notify()
   }
 

@@ -46,6 +46,52 @@ describe('RecipePresenter', () => {
     expect(presenter.recipes).toHaveLength(0)
   })
 
+  it('clears validation errors when removing an input line', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
+    presenter.setName('Pan')
+    presenter.addInput()
+    presenter.updateInput(0, 'goodName', 'Harina')
+    presenter.updateInput(0, 'quantity', '2')
+    presenter.addInput()
+    presenter.updateInput(1, 'goodName', 'Desconocido')
+    presenter.updateInput(1, 'quantity', '1')
+    presenter.addOutput()
+    presenter.updateOutput(0, 'goodName', 'Pan')
+    presenter.updateOutput(0, 'quantity', '1')
+
+    presenter.submit()
+    expect(presenter.errors).toEqual([{ code: 'UNKNOWN_GOOD', goodName: 'Desconocido' }])
+
+    presenter.removeInput(1)
+
+    expect(presenter.errors).toEqual([])
+  })
+
+  it('clears validation errors when removing an output line', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
+    presenter.setName('Pan')
+    presenter.addInput()
+    presenter.updateInput(0, 'goodName', 'Harina')
+    presenter.updateInput(0, 'quantity', '2')
+    presenter.addOutput()
+    presenter.updateOutput(0, 'goodName', 'Pan')
+    presenter.updateOutput(0, 'quantity', '1')
+    presenter.addOutput()
+    presenter.updateOutput(1, 'goodName', 'Desconocido')
+    presenter.updateOutput(1, 'quantity', '1')
+
+    presenter.submit()
+    expect(presenter.errors).toEqual([{ code: 'UNKNOWN_GOOD', goodName: 'Desconocido' }])
+
+    presenter.removeOutput(1)
+
+    expect(presenter.errors).toEqual([])
+  })
+
   it('loads a recipe into the form for editing', () => {
     stores.goodStore.create('Harina')
     stores.goodStore.create('Pan')

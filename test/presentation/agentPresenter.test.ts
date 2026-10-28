@@ -43,6 +43,25 @@ describe('AgentPresenter', () => {
     expect(presenter.agents).toHaveLength(0)
   })
 
+  it('clears validation errors when removing an inventory line', () => {
+    stores.goodStore.create('Harina')
+
+    presenter.setName('Panadero')
+    presenter.addInventoryLine()
+    presenter.updateInventoryLine(0, 'goodName', 'Harina')
+    presenter.updateInventoryLine(0, 'quantity', '10')
+    presenter.addInventoryLine()
+    presenter.updateInventoryLine(1, 'goodName', 'Desconocido')
+    presenter.updateInventoryLine(1, 'quantity', '1')
+
+    presenter.submit()
+    expect(presenter.errors).toEqual([{ code: 'UNKNOWN_GOOD', goodName: 'Desconocido' }])
+
+    presenter.removeInventoryLine(1)
+
+    expect(presenter.errors).toEqual([])
+  })
+
   it('selects an agent and switches to recipe view by default', () => {
     stores.goodStore.create('Harina')
     const created = stores.agentStore.create({
