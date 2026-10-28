@@ -15,7 +15,7 @@ Aplicación de crafting/economía para juegos. Un único usuario alterna entre m
 - [x] **#3** Como usuario en modo diseño, quiero registrar bienes y servicios en el catálogo, para usarlos en recetas y agentes.
 - [x] **#4** Como usuario en modo diseño, quiero crear agentes y asignarles un inventario inicial, para modelar actores en la economía. Requires: #3
 - [x] **#5** Como usuario en modo diseño, quiero crear, editar y eliminar recetas propias de un agente, para definir sus métodos de producción particulares. Requires: #1, #4
-- [ ] **#6** Como usuario en modo diseño, quiero configurar reglas automáticas de producción/consumo para los agentes, para que actúen de forma autónoma. Requires: #1, #4
+- [x] **#6** Como usuario en modo diseño, quiero configurar reglas automáticas de producción/consumo para los agentes, para que actúen de forma autónoma. Requires: #1, #4
 - [ ] **#7** Como usuario, quiero cambiar entre modo diseño y modo juego, para enfocarme en crear contenido o en jugar.
 - [ ] **#8** Como usuario en modo juego, quiero ver los agentes disponibles y poseer uno, para controlarlo. Requires: #4
 - [ ] **#9** Como usuario en modo juego, quiero cambiar de agente poseído o dejar de poseer ninguno, para gestionar mi conjunto de agentes. Requires: #8
