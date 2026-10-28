@@ -24,6 +24,12 @@ export class DesignModePresenter {
   private agentInventoryValue: LineDraft[] = []
   private agentErrorsValue: AgentError[] = []
   private agentsValue = agentStore.all()
+  private selectedAgentIdValue: string | null = null
+  private agentRecipeNameValue = ''
+  private agentRecipeInputsValue: LineDraft[] = []
+  private agentRecipeOutputsValue: LineDraft[] = []
+  private agentRecipeErrorsValue: RecipeError[] = []
+  private agentRecipeEditingIdValue: string | null = null
   private listeners = new Set<() => void>()
 
   get name(): string {
@@ -76,6 +82,30 @@ export class DesignModePresenter {
 
   get agents(): Agent[] {
     return this.agentsValue
+  }
+
+  get selectedAgentId(): string | null {
+    return this.selectedAgentIdValue
+  }
+
+  get agentRecipeName(): string {
+    return this.agentRecipeNameValue
+  }
+
+  get agentRecipeInputs(): LineDraft[] {
+    return this.agentRecipeInputsValue
+  }
+
+  get agentRecipeOutputs(): LineDraft[] {
+    return this.agentRecipeOutputsValue
+  }
+
+  get agentRecipeErrors(): RecipeError[] {
+    return this.agentRecipeErrorsValue
+  }
+
+  get agentRecipeEditingId(): string | null {
+    return this.agentRecipeEditingIdValue
   }
 
   subscribe(callback: () => void): () => void {
@@ -221,6 +251,100 @@ export class DesignModePresenter {
       this.agentErrorsValue = result.errors
     }
 
+    this.notify()
+  }
+
+  selectAgent(agentId: string): void {
+    this.selectedAgentIdValue = agentId
+    this.agentRecipeNameValue = ''
+    this.agentRecipeInputsValue = []
+    this.agentRecipeOutputsValue = []
+    this.agentRecipeErrorsValue = []
+    this.agentRecipeEditingIdValue = null
+    this.notify()
+  }
+
+  setAgentRecipeName(name: string): void {
+    this.agentRecipeNameValue = name
+    this.notify()
+  }
+
+  addAgentRecipeInput(): void {
+    this.agentRecipeInputsValue = [...this.agentRecipeInputsValue, { goodName: '', quantity: '' }]
+    this.notify()
+  }
+
+  updateAgentRecipeInput(index: number, field: keyof LineDraft, value: string): void {
+    const next = [...this.agentRecipeInputsValue]
+    next[index][field] = value
+    this.agentRecipeInputsValue = next
+    this.notify()
+  }
+
+  addAgentRecipeOutput(): void {
+    this.agentRecipeOutputsValue = [...this.agentRecipeOutputsValue, { goodName: '', quantity: '' }]
+    this.notify()
+  }
+
+  updateAgentRecipeOutput(index: number, field: keyof LineDraft, value: string): void {
+    const next = [...this.agentRecipeOutputsValue]
+    next[index][field] = value
+    this.agentRecipeOutputsValue = next
+    this.notify()
+  }
+
+  submitAgentRecipe(): void {
+    if (!this.selectedAgentIdValue) return
+
+    const draft = {
+      name: this.agentRecipeNameValue,
+      inputs: this.agentRecipeInputsValue.map((line) => ({
+        goodName: line.goodName,
+        quantity: Number(line.quantity),
+      })),
+      outputs: this.agentRecipeOutputsValue.map((line) => ({
+        goodName: line.goodName,
+        quantity: Number(line.quantity),
+      })),
+    }
+
+    const result = this.agentRecipeEditingIdValue
+      ? agentStore.updateRecipe(this.selectedAgentIdValue, this.agentRecipeEditingIdValue, draft)
+      : agentStore.addRecipe(this.selectedAgentIdValue, draft)
+
+    if (result.ok) {
+      this.agentsValue = agentStore.all()
+      this.goodsValue = goodStore.all()
+      this.agentRecipeNameValue = ''
+      this.agentRecipeInputsValue = []
+      this.agentRecipeOutputsValue = []
+      this.agentRecipeEditingIdValue = null
+      this.agentRecipeErrorsValue = []
+    } else {
+      this.agentRecipeErrorsValue = result.errors
+    }
+
+    this.notify()
+  }
+
+  startEditAgentRecipe(recipe: Recipe): void {
+    this.agentRecipeEditingIdValue = recipe.id
+    this.agentRecipeNameValue = recipe.name
+    this.agentRecipeInputsValue = recipe.inputs.map((line) => ({
+      goodName: goodStore.get(line.goodId)?.name ?? '',
+      quantity: String(line.quantity),
+    }))
+    this.agentRecipeOutputsValue = recipe.outputs.map((line) => ({
+      goodName: goodStore.get(line.goodId)?.name ?? '',
+      quantity: String(line.quantity),
+    }))
+    this.notify()
+  }
+
+  deleteAgentRecipe(recipeId: string): void {
+    if (!this.selectedAgentIdValue) return
+    agentStore.deleteRecipe(this.selectedAgentIdValue, recipeId)
+    this.agentsValue = agentStore.all()
     this.notify()
   }
 }

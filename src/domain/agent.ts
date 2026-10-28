@@ -1,5 +1,7 @@
 import type { DraftLine, Good, RecipeLine } from './recipe'
 
+import type { Recipe } from './recipe'
+
 export type AgentError =
   | { code: 'EMPTY_NAME' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
@@ -17,11 +19,13 @@ export class Agent {
   readonly id: string
   readonly name: string
   readonly inventory: RecipeLine[]
+  readonly recipes: Recipe[]
 
-  constructor(id: string, name: string, inventory: RecipeLine[]) {
+  constructor(id: string, name: string, inventory: RecipeLine[], recipes: Recipe[] = []) {
     this.id = id
     this.name = name
     this.inventory = inventory
+    this.recipes = recipes
   }
 
   has(good: Good, quantity: number): boolean {

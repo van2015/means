@@ -235,4 +235,68 @@ describe('DesignMode', () => {
     const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
     expect(within(agentCatalog).queryByText('Panadero')).not.toBeInTheDocument()
   })
+
+  it('creates an agent-specific recipe and shows it under that agent', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
+    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
+    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
+    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+
+    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
+    await user.click(within(agentCatalog).getByRole('button', { name: /gestionar recetas/i }))
+
+    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan artesanal')
+    await user.click(screen.getByRole('button', { name: /agregar entrada de receta del agente/i }))
+    await user.type(screen.getByLabelText(/nombre del insumo de receta del agente 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '2')
+    await user.click(screen.getByRole('button', { name: /agregar salida de receta del agente/i }))
+    await user.type(screen.getByLabelText(/nombre del producto de receta del agente 1/i), 'Pan')
+    await user.type(screen.getByLabelText(/cantidad del producto de receta del agente 1/i), '1')
+    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+
+    expect(within(agentCatalog).getByText('Pan artesanal')).toBeInTheDocument()
+    expect(within(agentCatalog).getByText(/harina: 2/i)).toBeInTheDocument()
+    expect(within(agentCatalog).getByText(/pan: 1/i)).toBeInTheDocument()
+
+    expect(withinRecipeCatalog().queryByText('Pan artesanal')).not.toBeInTheDocument()
+  })
+
+  it('edits an agent-specific recipe and reflects the change under the agent', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
+    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
+    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
+    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+
+    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
+    await user.click(within(agentCatalog).getByRole('button', { name: /gestionar recetas/i }))
+
+    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan artesanal')
+    await user.click(screen.getByRole('button', { name: /agregar entrada de receta del agente/i }))
+    await user.type(screen.getByLabelText(/nombre del insumo de receta del agente 1/i), 'Harina')
+    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '2')
+    await user.click(screen.getByRole('button', { name: /agregar salida de receta del agente/i }))
+    await user.type(screen.getByLabelText(/nombre del producto de receta del agente 1/i), 'Pan')
+    await user.type(screen.getByLabelText(/cantidad del producto de receta del agente 1/i), '1')
+    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+
+    await user.click(within(agentCatalog).getByRole('button', { name: /editar/i }))
+    await user.clear(screen.getByLabelText(/nombre de la receta del agente/i))
+    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan integral')
+    await user.clear(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i))
+    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '3')
+    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+
+    expect(within(agentCatalog).getByText('Pan integral')).toBeInTheDocument()
+    expect(within(agentCatalog).getByText(/harina: 3/i)).toBeInTheDocument()
+    expect(within(agentCatalog).queryByText('Pan artesanal')).not.toBeInTheDocument()
+    expect(within(agentCatalog).queryByText(/harina: 2/i)).not.toBeInTheDocument()
+  })
 })

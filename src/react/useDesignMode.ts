@@ -24,6 +24,12 @@ export function useDesignMode() {
     agentInventory: presenter.agentInventory,
     agents: presenter.agents,
     agentErrors: presenter.agentErrors,
+    selectedAgentId: presenter.selectedAgentId,
+    agentRecipeName: presenter.agentRecipeName,
+    agentRecipeInputs: presenter.agentRecipeInputs,
+    agentRecipeOutputs: presenter.agentRecipeOutputs,
+    agentRecipeErrors: presenter.agentRecipeErrors,
+    agentRecipeEditingId: presenter.agentRecipeEditingId,
     setName: (name: string) => presenter.setName(name),
     addInput: () => presenter.addInput(),
     updateInput: (index: number, field: keyof LineDraft, value: string) =>
@@ -41,5 +47,16 @@ export function useDesignMode() {
     updateAgentInventoryLine: (index: number, field: keyof LineDraft, value: string) =>
       presenter.updateAgentInventoryLine(index, field, value),
     submitAgent: () => presenter.submitAgent(),
+    selectAgent: (agentId: string) => presenter.selectAgent(agentId),
+    setAgentRecipeName: (name: string) => presenter.setAgentRecipeName(name),
+    addAgentRecipeInput: () => presenter.addAgentRecipeInput(),
+    updateAgentRecipeInput: (index: number, field: keyof LineDraft, value: string) =>
+      presenter.updateAgentRecipeInput(index, field, value),
+    addAgentRecipeOutput: () => presenter.addAgentRecipeOutput(),
+    updateAgentRecipeOutput: (index: number, field: keyof LineDraft, value: string) =>
+      presenter.updateAgentRecipeOutput(index, field, value),
+    submitAgentRecipe: () => presenter.submitAgentRecipe(),
+    startEditAgentRecipe: (recipe: Recipe) => presenter.startEditAgentRecipe(recipe),
+    deleteAgentRecipe: (recipeId: string) => presenter.deleteAgentRecipe(recipeId),
   }
 }

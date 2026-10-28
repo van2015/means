@@ -99,7 +99,53 @@ export function DesignMode() {
         </form>
         <ValidationErrors errors={presenter.agentErrors} />
       </section>
-      <AgentCatalog agents={presenter.agents} goods={presenter.goods} />
+      <AgentCatalog
+        agents={presenter.agents}
+        goods={presenter.goods}
+        selectedAgentId={presenter.selectedAgentId}
+        onSelectAgent={presenter.selectAgent}
+        onEditRecipe={presenter.startEditAgentRecipe}
+        onDeleteRecipe={presenter.deleteAgentRecipe}
+      />
+      {presenter.selectedAgentId && (
+        <section>
+          <h3>Receta propia del agente</h3>
+          <form onSubmit={(event) => {
+            event.preventDefault()
+            presenter.submitAgentRecipe()
+          }}>
+            <label>
+              Nombre de la receta del agente
+              <input
+                value={presenter.agentRecipeName}
+                onChange={(event) => presenter.setAgentRecipeName(event.target.value)}
+              />
+            </label>
+            <RecipeLineForm
+              legend="Entradas"
+              lineLabel="insumo de receta del agente"
+              addButtonLabel="entrada de receta del agente"
+              listId="goods-list-agent-recipe-inputs"
+              lines={presenter.agentRecipeInputs}
+              goods={presenter.goods}
+              onAdd={presenter.addAgentRecipeInput}
+              onUpdate={presenter.updateAgentRecipeInput}
+            />
+            <RecipeLineForm
+              legend="Salidas"
+              lineLabel="producto de receta del agente"
+              addButtonLabel="salida de receta del agente"
+              listId="goods-list-agent-recipe-outputs"
+              lines={presenter.agentRecipeOutputs}
+              goods={presenter.goods}
+              onAdd={presenter.addAgentRecipeOutput}
+              onUpdate={presenter.updateAgentRecipeOutput}
+            />
+            <button type="submit">Guardar receta del agente</button>
+          </form>
+          <ValidationErrors errors={presenter.agentRecipeErrors} />
+        </section>
+      )}
     </div>
   )
 }
