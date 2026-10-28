@@ -14,14 +14,16 @@ export function App({ stores: providedStores }: AppProps) {
   const [mode, setMode] = useState<Mode>('design')
 
   return (
-    <div>
+    <div className="app-shell">
       <button
         type="button"
         onClick={() => setMode((current) => (current === 'design' ? 'play' : 'design'))}
       >
         {mode === 'design' ? 'Cambiar a modo juego' : 'Cambiar a modo diseño'}
       </button>
-      {mode === 'design' ? <DesignMode stores={stores} /> : <PlayMode stores={stores} />}
+      <main>
+        {mode === 'design' ? <DesignMode stores={stores} /> : <PlayMode stores={stores} />}
+      </main>
     </div>
   )
 }

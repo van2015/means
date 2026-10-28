@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { createStores } from '@/domain/stores'
@@ -6,6 +6,19 @@ import { App } from '@/react/App'
 import { goodNameInput, registerGoodButton } from '../helpers/designModeQueries'
 
 describe('App', () => {
+  it('keeps the shared app shell when switching between modes', async () => {
+    const user = userEvent.setup()
+    render(<App stores={createStores()} />)
+
+    const shell = screen.getByRole('main')
+    expect(within(shell).getByRole('heading', { name: /modo diseño/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+
+    expect(screen.getByRole('main')).toBe(shell)
+    expect(within(shell).getByRole('heading', { name: /modo juego/i })).toBeInTheDocument()
+  })
+
   it('switches from design mode to play mode', async () => {
     const user = userEvent.setup()
     render(<App stores={createStores()} />)
