@@ -1,14 +1,40 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { DesignMode } from '@/react/DesignMode'
 import { agentStore } from '@/domain/agentStore'
 import { goodStore } from '@/domain/goodStore'
 import { recipeStore } from '@/domain/recipeStore'
-
-function withinRecipeCatalog() {
-  return within(screen.getByRole('heading', { name: /catálogo de recetas/i }).closest('section')!)
-}
+import {
+  addAgentInventoryLineButton,
+  addAgentRecipeInputButton,
+  addAgentRecipeOutputButton,
+  addRecipeInputButton,
+  addRecipeOutputButton,
+  agentInventoryGoodName,
+  agentInventoryQuantity,
+  agentNameInput,
+  agentRecipeInputGoodName,
+  agentRecipeInputQuantity,
+  agentRecipeNameInput,
+  agentRecipeOutputGoodName,
+  agentRecipeOutputQuantity,
+  createAgentButton,
+  deleteButton,
+  editButton,
+  goodNameInput,
+  manageAgentRecipesButton,
+  recipeInputGoodName,
+  recipeInputQuantity,
+  recipeNameInput,
+  recipeOutputGoodName,
+  recipeOutputQuantity,
+  registerGoodButton,
+  saveAgentRecipeButton,
+  saveRecipeButton,
+  withinAgentCatalog,
+  withinRecipeCatalog,
+} from '../helpers/designModeQueries'
 
 describe('DesignMode', () => {
   beforeEach(() => {
@@ -20,27 +46,27 @@ describe('DesignMode', () => {
   it('renders a recipe form with inputs, outputs and save', () => {
     render(<DesignMode />)
 
-    expect(screen.getByLabelText(/^nombre$/i)).toBeInTheDocument()
+    expect(recipeNameInput()).toBeInTheDocument()
     expect(screen.getByText(/entradas/i)).toBeInTheDocument()
     expect(screen.getByText(/salidas/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /guardar receta/i })).toBeInTheDocument()
+    expect(saveRecipeButton()).toBeInTheDocument()
   })
 
   it('saves a valid recipe and shows it in the catalog', async () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/^nombre$/i), 'Pan')
+    await user.type(recipeNameInput(), 'Pan')
 
-    await user.click(screen.getByRole('button', { name: /agregar entrada/i }))
-    await user.type(screen.getByLabelText(/nombre del insumo 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del insumo 1/i), '2')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
 
-    await user.click(screen.getByRole('button', { name: /agregar salida/i }))
-    await user.type(screen.getByLabelText(/nombre del producto 1/i), 'Pan')
-    await user.type(screen.getByLabelText(/cantidad del producto 1/i), '1')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
 
-    await user.click(screen.getByRole('button', { name: /guardar receta/i }))
+    await user.click(saveRecipeButton())
 
     expect(screen.getByRole('heading', { name: /catálogo de recetas/i })).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
@@ -57,13 +83,13 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    await userEvent.click(screen.getByRole('button', { name: /editar/i }))
+    await userEvent.click(editButton())
 
-    expect(screen.getByLabelText(/^nombre$/i)).toHaveValue('Pan')
-    expect(screen.getByLabelText(/nombre del insumo 1/i)).toHaveValue('Harina')
-    expect(screen.getByLabelText(/cantidad del insumo 1/i)).toHaveValue('2')
-    expect(screen.getByLabelText(/nombre del producto 1/i)).toHaveValue('Pan')
-    expect(screen.getByLabelText(/cantidad del producto 1/i)).toHaveValue('1')
+    expect(recipeNameInput()).toHaveValue('Pan')
+    expect(recipeInputGoodName(1)).toHaveValue('Harina')
+    expect(recipeInputQuantity(1)).toHaveValue('2')
+    expect(recipeOutputGoodName(1)).toHaveValue('Pan')
+    expect(recipeOutputQuantity(1)).toHaveValue('1')
   })
 
   it('saves edited recipe and shows updated data in the catalog', async () => {
@@ -75,12 +101,12 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    await userEvent.click(screen.getByRole('button', { name: /editar/i }))
+    await userEvent.click(editButton())
 
-    await userEvent.clear(screen.getByLabelText(/^nombre$/i))
-    await userEvent.type(screen.getByLabelText(/^nombre$/i), 'Pan integral')
+    await userEvent.clear(recipeNameInput())
+    await userEvent.type(recipeNameInput(), 'Pan integral')
 
-    await userEvent.click(screen.getByRole('button', { name: /guardar receta/i }))
+    await userEvent.click(saveRecipeButton())
 
     expect(withinRecipeCatalog().getByText('Pan integral')).toBeInTheDocument()
     expect(withinRecipeCatalog().queryByText('Pan')).not.toBeInTheDocument()
@@ -95,7 +121,7 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    await userEvent.click(screen.getByRole('button', { name: /eliminar/i }))
+    await userEvent.click(deleteButton())
 
     expect(withinRecipeCatalog().queryByText('Pan')).not.toBeInTheDocument()
     expect(withinRecipeCatalog().queryByText(/harina: 2/i)).not.toBeInTheDocument()
@@ -110,15 +136,15 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    await userEvent.click(screen.getByRole('button', { name: /editar/i }))
+    await userEvent.click(editButton())
 
-    await userEvent.clear(screen.getByLabelText(/^nombre$/i))
-    await userEvent.type(screen.getByLabelText(/^nombre$/i), 'Pan invalido')
+    await userEvent.clear(recipeNameInput())
+    await userEvent.type(recipeNameInput(), 'Pan invalido')
 
-    await userEvent.clear(screen.getByLabelText(/cantidad del insumo 1/i))
-    await userEvent.type(screen.getByLabelText(/cantidad del insumo 1/i), '0')
+    await userEvent.clear(recipeInputQuantity(1))
+    await userEvent.type(recipeInputQuantity(1), '0')
 
-    await userEvent.click(screen.getByRole('button', { name: /guardar receta/i }))
+    await userEvent.click(saveRecipeButton())
 
     expect(screen.getByText(/la cantidad de harina debe ser mayor que cero/i)).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
@@ -129,8 +155,8 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/bien o servicio/i), 'Harina')
-    await user.click(screen.getByRole('button', { name: /registrar bien o servicio/i }))
+    await user.type(goodNameInput(), 'Harina')
+    await user.click(registerGoodButton())
 
     expect(screen.getByRole('heading', { name: /bienes y servicios/i })).toBeInTheDocument()
     expect(screen.getByText('Harina')).toBeInTheDocument()
@@ -140,7 +166,7 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.click(screen.getByRole('button', { name: /registrar bien o servicio/i }))
+    await user.click(registerGoodButton())
 
     expect(screen.getByText(/el nombre no puede estar vacío/i)).toBeInTheDocument()
     expect(screen.queryByRole('listitem', { name: /harina/i })).not.toBeInTheDocument()
@@ -152,9 +178,9 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    await user.click(screen.getByRole('button', { name: /agregar entrada/i }))
+    await user.click(addRecipeInputButton())
 
-    const input = screen.getByLabelText(/nombre del insumo 1/i)
+    const input = recipeInputGoodName(1)
     expect(input).toHaveAttribute('list', 'goods-list-inputs')
 
     const datalist = document.getElementById('goods-list-inputs')
@@ -162,14 +188,14 @@ describe('DesignMode', () => {
     expect(datalist?.querySelector('option[value="Harina"]')).toBeInTheDocument()
 
     await user.type(input, 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del insumo 1/i), '2')
+    await user.type(recipeInputQuantity(1), '2')
 
-    await user.click(screen.getByRole('button', { name: /agregar salida/i }))
-    await user.type(screen.getByLabelText(/nombre del producto 1/i), 'Pan')
-    await user.type(screen.getByLabelText(/cantidad del producto 1/i), '1')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
 
-    await user.type(screen.getByLabelText(/^nombre$/i), 'Pan')
-    await user.click(screen.getByRole('button', { name: /guardar receta/i }))
+    await user.type(recipeNameInput(), 'Pan')
+    await user.click(saveRecipeButton())
 
     expect(withinRecipeCatalog().getByText('Pan')).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText(/harina: 2/i)).toBeInTheDocument()
@@ -183,7 +209,7 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.click(screen.getByRole('button', { name: /guardar receta/i }))
+    await user.click(saveRecipeButton())
 
     expect(screen.getByText(/se requiere al menos una entrada/i)).toBeInTheDocument()
     expect(screen.getByText(/se requiere al menos una salida/i)).toBeInTheDocument()
@@ -193,17 +219,17 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
+    await user.type(agentNameInput(), 'Panadero')
 
-    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
-    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
 
-    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+    await user.click(createAgentButton())
 
-    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
-    expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
-    expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
+    expect(agentCatalog.getByText(/harina: 10/i)).toBeInTheDocument()
   })
 
   it('displays existing agents with their name and initial inventory', () => {
@@ -214,53 +240,53 @@ describe('DesignMode', () => {
 
     render(<DesignMode />)
 
-    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
-    expect(within(agentCatalog).getByText('Panadero')).toBeInTheDocument()
-    expect(within(agentCatalog).getByText(/harina: 10/i)).toBeInTheDocument()
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
+    expect(agentCatalog.getByText(/harina: 10/i)).toBeInTheDocument()
   })
 
   it('shows validation errors when creating an agent with empty name or invalid quantity', async () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
-    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '0')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '0')
 
-    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+    await user.click(createAgentButton())
 
     expect(screen.getByText(/el nombre no puede estar vacío/i)).toBeInTheDocument()
     expect(screen.getByText(/la cantidad de harina debe ser mayor que cero/i)).toBeInTheDocument()
 
-    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
-    expect(within(agentCatalog).queryByText('Panadero')).not.toBeInTheDocument()
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.queryByText('Panadero')).not.toBeInTheDocument()
   })
 
   it('creates an agent-specific recipe and shows it under that agent', async () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
-    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
-    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
-    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
 
-    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
-    await user.click(within(agentCatalog).getByRole('button', { name: /gestionar recetas/i }))
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
 
-    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan artesanal')
-    await user.click(screen.getByRole('button', { name: /agregar entrada de receta del agente/i }))
-    await user.type(screen.getByLabelText(/nombre del insumo de receta del agente 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '2')
-    await user.click(screen.getByRole('button', { name: /agregar salida de receta del agente/i }))
-    await user.type(screen.getByLabelText(/nombre del producto de receta del agente 1/i), 'Pan')
-    await user.type(screen.getByLabelText(/cantidad del producto de receta del agente 1/i), '1')
-    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+    await user.type(agentRecipeNameInput(), 'Pan artesanal')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '2')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
 
-    expect(within(agentCatalog).getByText('Pan artesanal')).toBeInTheDocument()
-    expect(within(agentCatalog).getByText(/harina: 2/i)).toBeInTheDocument()
-    expect(within(agentCatalog).getByText(/pan: 1/i)).toBeInTheDocument()
+    expect(agentCatalog.getByText('Pan artesanal')).toBeInTheDocument()
+    expect(agentCatalog.getByText(/harina: 2/i)).toBeInTheDocument()
+    expect(agentCatalog.getByText(/pan: 1/i)).toBeInTheDocument()
 
     expect(withinRecipeCatalog().queryByText('Pan artesanal')).not.toBeInTheDocument()
   })
@@ -269,34 +295,63 @@ describe('DesignMode', () => {
     const user = userEvent.setup()
     render(<DesignMode />)
 
-    await user.type(screen.getByLabelText(/nombre del agente/i), 'Panadero')
-    await user.click(screen.getByRole('button', { name: /agregar línea de inventario/i }))
-    await user.type(screen.getByLabelText(/nombre del bien 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del bien 1/i), '10')
-    await user.click(screen.getByRole('button', { name: /crear agente/i }))
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
 
-    const agentCatalog = screen.getByRole('heading', { name: /catálogo de agentes/i }).closest('section')!
-    await user.click(within(agentCatalog).getByRole('button', { name: /gestionar recetas/i }))
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
 
-    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan artesanal')
-    await user.click(screen.getByRole('button', { name: /agregar entrada de receta del agente/i }))
-    await user.type(screen.getByLabelText(/nombre del insumo de receta del agente 1/i), 'Harina')
-    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '2')
-    await user.click(screen.getByRole('button', { name: /agregar salida de receta del agente/i }))
-    await user.type(screen.getByLabelText(/nombre del producto de receta del agente 1/i), 'Pan')
-    await user.type(screen.getByLabelText(/cantidad del producto de receta del agente 1/i), '1')
-    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+    await user.type(agentRecipeNameInput(), 'Pan artesanal')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '2')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
 
-    await user.click(within(agentCatalog).getByRole('button', { name: /editar/i }))
-    await user.clear(screen.getByLabelText(/nombre de la receta del agente/i))
-    await user.type(screen.getByLabelText(/nombre de la receta del agente/i), 'Pan integral')
-    await user.clear(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i))
-    await user.type(screen.getByLabelText(/cantidad del insumo de receta del agente 1/i), '3')
-    await user.click(screen.getByRole('button', { name: /guardar receta del agente/i }))
+    await user.click(editButton(agentCatalog))
+    await user.clear(agentRecipeNameInput())
+    await user.type(agentRecipeNameInput(), 'Pan integral')
+    await user.clear(agentRecipeInputQuantity(1))
+    await user.type(agentRecipeInputQuantity(1), '3')
+    await user.click(saveAgentRecipeButton())
 
-    expect(within(agentCatalog).getByText('Pan integral')).toBeInTheDocument()
-    expect(within(agentCatalog).getByText(/harina: 3/i)).toBeInTheDocument()
-    expect(within(agentCatalog).queryByText('Pan artesanal')).not.toBeInTheDocument()
-    expect(within(agentCatalog).queryByText(/harina: 2/i)).not.toBeInTheDocument()
+    expect(agentCatalog.getByText('Pan integral')).toBeInTheDocument()
+    expect(agentCatalog.getByText(/harina: 3/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText('Pan artesanal')).not.toBeInTheDocument()
+    expect(agentCatalog.queryByText(/harina: 2/i)).not.toBeInTheDocument()
+  })
+
+  it('deletes an agent-specific recipe and it disappears from the agent', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
+
+    await user.type(agentRecipeNameInput(), 'Pan artesanal')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '2')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
+
+    await user.click(deleteButton(agentCatalog))
+
+    expect(agentCatalog.queryByText('Pan artesanal')).not.toBeInTheDocument()
+    expect(agentCatalog.queryByText(/harina: 2/i)).not.toBeInTheDocument()
+    expect(agentCatalog.queryByText(/pan: 1/i)).not.toBeInTheDocument()
   })
 })
