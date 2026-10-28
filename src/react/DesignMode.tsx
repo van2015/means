@@ -110,6 +110,8 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
             goods={presenter.goods}
             onAdd={presenter.addAgentInventoryLine}
             onUpdate={presenter.updateAgentInventoryLine}
+            onRemove={presenter.removeAgentInventoryLine}
+            removeLabel="línea de inventario"
           />
           <button type="submit">Crear agente</button>
         </form>

@@ -2,7 +2,7 @@ import type { Good, GoodStore } from '@/domain/goodStore'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from '@/domain/recipeStore'
 import { RecipeStore } from '@/domain/recipeStore'
 import { Presenter } from './presenter'
-import type { LineDraft } from './lineDraft'
+import { removeLineAt, type LineDraft } from './lineDraft'
 
 export class RecipePresenter extends Presenter {
   private recipeStore: RecipeStore
@@ -65,7 +65,7 @@ export class RecipePresenter extends Presenter {
   }
 
   removeInput(index: number): void {
-    this.inputsValue = this.inputsValue.filter((_, lineIndex) => lineIndex !== index)
+    this.inputsValue = removeLineAt(this.inputsValue, index)
     this.notify()
   }
 
@@ -82,7 +82,7 @@ export class RecipePresenter extends Presenter {
   }
 
   removeOutput(index: number): void {
-    this.outputsValue = this.outputsValue.filter((_, lineIndex) => lineIndex !== index)
+    this.outputsValue = removeLineAt(this.outputsValue, index)
     this.notify()
   }
 

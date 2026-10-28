@@ -86,6 +86,7 @@ export function useDesignMode(stores: Stores) {
     addAgentInventoryLine: () => agentPresenter.addInventoryLine(),
     updateAgentInventoryLine: (index: number, field: keyof LineDraft, value: string) =>
       agentPresenter.updateInventoryLine(index, field, value),
+    removeAgentInventoryLine: (index: number) => agentPresenter.removeInventoryLine(index),
     submitAgent: () => agentPresenter.submit(),
     selectAgent,
     selectAgentRules,

@@ -30,6 +30,7 @@ import {
   recipeOutputGoodName,
   recipeOutputQuantity,
   registerGoodButton,
+  removeAgentInventoryLineButton,
   removeRecipeOutputButton,
   ruleConditionGoodSelect,
   ruleConditionOperatorSelect,
@@ -121,6 +122,48 @@ describe('DesignMode', () => {
     expect(screen.queryByLabelText(/nombre del producto 2/i)).not.toBeInTheDocument()
     expect(recipeOutputGoodName(1)).toHaveValue('Tortilla')
     expect(recipeOutputQuantity(1)).toHaveValue(2)
+  })
+
+  it('saves an edited recipe without the removed input line', async () => {
+    stores.recipeStore.create({
+      name: 'Pan',
+      inputs: [
+        { goodName: 'Harina', quantity: 2 },
+        { goodName: 'Huevos', quantity: 3 },
+      ],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.click(editButton())
+    await user.click(removeRecipeInputButton(1))
+    await user.click(saveRecipeButton())
+
+    expect(withinRecipeCatalog().getByText(/huevos: 3/i)).toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText(/harina: 2/i)).not.toBeInTheDocument()
+  })
+
+  it('saves an edited recipe without the removed output line', async () => {
+    stores.recipeStore.create({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [
+        { goodName: 'Pan', quantity: 1 },
+        { goodName: 'Tortilla', quantity: 2 },
+      ],
+    })
+
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.click(editButton())
+    await user.click(removeRecipeOutputButton(1))
+    await user.click(saveRecipeButton())
+
+    expect(withinRecipeCatalog().getByText(/tortilla: 2/i)).toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText(/pan: 1/i)).not.toBeInTheDocument()
   })
 
   it('loads a recipe into the form when clicking edit', async () => {
@@ -279,6 +322,33 @@ describe('DesignMode', () => {
     const agentCatalog = withinAgentCatalog()
     expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
     expect(agentCatalog.getByText(/harina: 10/i)).toBeInTheDocument()
+  })
+
+  it('removes an inventory line while creating an agent', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(2), 'Huevos')
+    await user.type(agentInventoryQuantity(2), '3')
+
+    await user.click(removeAgentInventoryLineButton(1))
+
+    expect(screen.queryByLabelText(/nombre del bien 2/i)).not.toBeInTheDocument()
+    expect(agentInventoryGoodName(1)).toHaveValue('Huevos')
+    expect(agentInventoryQuantity(1)).toHaveValue(3)
+
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.getByText(/huevos: 3/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText(/harina: 10/i)).not.toBeInTheDocument()
   })
 
   it('displays existing agents with their name and initial inventory', () => {

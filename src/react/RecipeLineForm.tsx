@@ -11,6 +11,7 @@ type RecipeLineFormProps = {
   onAdd: () => void
   onUpdate: (index: number, field: keyof LineDraft, value: string) => void
   onRemove?: (index: number) => void
+  removeLabel?: string
 }
 
 export function RecipeLineForm({
@@ -23,6 +24,7 @@ export function RecipeLineForm({
   onAdd,
   onUpdate,
   onRemove,
+  removeLabel,
 }: RecipeLineFormProps) {
   return (
     <fieldset>
@@ -49,7 +51,7 @@ export function RecipeLineForm({
           {onRemove && (
             <button
               type="button"
-              aria-label={`Eliminar ${lineLabel} ${index + 1}`}
+              aria-label={`Eliminar ${removeLabel ?? lineLabel} ${index + 1}`}
               onClick={() => onRemove(index)}
             >
               Eliminar

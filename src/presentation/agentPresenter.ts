@@ -1,7 +1,7 @@
 import type { Agent, AgentError, AgentResult } from '@/domain/agent'
 import type { AgentStore } from '@/domain/agentStore'
 import { Presenter } from './presenter'
-import type { LineDraft } from './lineDraft'
+import { removeLineAt, type LineDraft } from './lineDraft'
 
 export class AgentPresenter extends Presenter {
   private agentStore: AgentStore
@@ -54,6 +54,11 @@ export class AgentPresenter extends Presenter {
     const next = [...this.inventoryValue]
     next[index][field] = value
     this.inventoryValue = next
+    this.notify()
+  }
+
+  removeInventoryLine(index: number): void {
+    this.inventoryValue = removeLineAt(this.inventoryValue, index)
     this.notify()
   }
 

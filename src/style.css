@@ -122,6 +122,7 @@ main > div > form {
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 main > div > form > label,
@@ -255,6 +256,8 @@ select option {
 
 fieldset {
   display: grid;
+  align-content: start;
+  align-items: start;
   gap: 12px;
   min-width: 0;
   margin: 0;
@@ -274,11 +277,12 @@ legend {
 
 fieldset > div {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: end;
 }
 
+fieldset > div > button,
 fieldset > button,
 section form > button {
   justify-self: start;
