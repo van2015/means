@@ -11,9 +11,7 @@ export function ValidationErrors({ errors }: { errors: ValidationError[] }) {
     <ul role="list" aria-label="Errores de validación">
       {errors.map((error, index) => {
         const key =
-          'goodName' in error
-            ? `${error.code}-${error.goodName}`
-            : `${error.code}-${index}`
+          'goodName' in error ? `${error.code}-${error.goodName}` : `${error.code}-${index}`
         return <li key={key}>{errorMessage(error)}</li>
       })}
     </ul>

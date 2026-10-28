@@ -11,6 +11,8 @@ export function errorMessage(error: ValidationError): string {
       return 'Se requiere al menos una salida'
     case 'INVALID_QUANTITY':
       return `La cantidad de ${error.goodName} debe ser mayor que cero`
+    case 'UNKNOWN_GOOD':
+      return `El bien "${error.goodName}" no está registrado`
     case 'RECIPE_NOT_FOUND':
       return 'Receta no encontrada'
     case 'EMPTY_NAME':
@@ -21,5 +23,9 @@ export function errorMessage(error: ValidationError): string {
       return 'Se requiere un bien para la condición'
     case 'INVALID_CONDITION_QUANTITY':
       return 'La cantidad de la condición debe ser mayor que cero'
+    case 'AGENT_NOT_FOUND':
+      return 'Agente no encontrado'
+    case 'RULE_NOT_FOUND':
+      return 'Regla no encontrada'
   }
 }

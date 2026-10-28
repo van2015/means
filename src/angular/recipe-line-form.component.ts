@@ -24,6 +24,8 @@ import type { LineDraft } from '@/presentation/lineDraft'
           <label>
             Cantidad del {{ lineLabel }} {{ i + 1 }}
             <input
+              type="number"
+              min="1"
               [ngModel]="line.quantity"
               (ngModelChange)="update.emit({ index: i, field: 'quantity', value: $event })"
               [name]="'lineQuantity' + i"

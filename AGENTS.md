@@ -23,6 +23,7 @@ The full backlog and detailed user stories live in [/docs/backlog.md](/docs/back
 - **Presenters** are split by feature: `RecipePresenter`, `GoodPresenter`, `AgentPresenter`, `AgentRecipePresenter`, `AgentRulePresenter`. React's `useDesignMode` composes them and exposes a flat API to the UI.
 - **Entry points:** `index.html` serves the React design-mode app (`src/react/main.tsx`). `angular.html` still serves the Angular design-mode app (`src/angular/main.ts`).
 - **Rule engine:** a small `ruleEngine.ts` evaluates agent rules against inventory; it is the foundation for the upcoming play-mode loop.
+- **Goods registration:** recipes and agent inventories no longer auto-create goods. Register goods explicitly before referencing them; otherwise validation returns `UNKNOWN_GOOD`.
 
 ## Commands
 
@@ -30,3 +31,7 @@ The full backlog and detailed user stories live in [/docs/backlog.md](/docs/back
 - `npm run build` — type-check and build for production
 - `npm run test` — run tests in watch mode
 - `npm run test:run` — run tests once
+- `npm run lint` — run ESLint
+- `npm run lint:fix` — run ESLint with auto-fix
+- `npm run format` — format code with Prettier
+- `npm run format:check` — check Prettier formatting

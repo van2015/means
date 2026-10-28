@@ -8,10 +8,12 @@ describe('AgentPresenter', () => {
 
   beforeEach(() => {
     stores = createStores()
-    presenter = new AgentPresenter(stores)
+    presenter = new AgentPresenter({ agentStore: stores.agentStore })
   })
 
   it('creates an agent with inventory', () => {
+    stores.goodStore.create('Harina')
+
     presenter.setName('Panadero')
     presenter.addInventoryLine()
     presenter.updateInventoryLine(0, 'goodName', 'Harina')
@@ -26,6 +28,8 @@ describe('AgentPresenter', () => {
   })
 
   it('shows validation errors and does not create the agent', () => {
+    stores.goodStore.create('Harina')
+
     presenter.addInventoryLine()
     presenter.updateInventoryLine(0, 'goodName', 'Harina')
     presenter.updateInventoryLine(0, 'quantity', '0')
@@ -40,6 +44,7 @@ describe('AgentPresenter', () => {
   })
 
   it('selects an agent and switches to recipe view by default', () => {
+    stores.goodStore.create('Harina')
     const created = stores.agentStore.create({
       name: 'Panadero',
       inventory: [{ goodName: 'Harina', quantity: 10 }],
@@ -54,6 +59,7 @@ describe('AgentPresenter', () => {
   })
 
   it('switches to rules view', () => {
+    stores.goodStore.create('Harina')
     const created = stores.agentStore.create({
       name: 'Panadero',
       inventory: [{ goodName: 'Harina', quantity: 10 }],

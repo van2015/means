@@ -24,17 +24,9 @@ export function useDesignMode(stores: Stores) {
       agentRecipePresenter,
       agentRulePresenter,
     ]
-    const unsubscribes = presenters.map((presenter) =>
-      presenter.subscribe(() => forceUpdate({})),
-    )
+    const unsubscribes = presenters.map((presenter) => presenter.subscribe(() => forceUpdate({})))
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
-  }, [
-    recipePresenter,
-    goodPresenter,
-    agentPresenter,
-    agentRecipePresenter,
-    agentRulePresenter,
-  ])
+  }, [recipePresenter, goodPresenter, agentPresenter, agentRecipePresenter, agentRulePresenter])
 
   const selectAgent = (agentId: string) => {
     agentPresenter.selectAgent(agentId)
@@ -107,8 +99,7 @@ export function useDesignMode(stores: Stores) {
       agentRecipePresenter.startEdit(recipe),
     deleteAgentRecipe: (recipeId: string) => agentRecipePresenter.deleteRecipe(recipeId),
     setAgentRuleRecipeRef: (ref: RuleRecipeRef) => agentRulePresenter.setRecipeRef(ref),
-    setAgentRuleConditionGoodId: (goodId: string) =>
-      agentRulePresenter.setConditionGoodId(goodId),
+    setAgentRuleConditionGoodId: (goodId: string) => agentRulePresenter.setConditionGoodId(goodId),
     setAgentRuleConditionQuantity: (value: string) =>
       agentRulePresenter.setConditionQuantity(value),
     setAgentRuleConditionOperator: (operator: 'AT_LEAST' | 'LESS_THAN') =>

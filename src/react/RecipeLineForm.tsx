@@ -32,18 +32,16 @@ export function RecipeLineForm({
             <input
               list={listId}
               value={line.goodName}
-              onChange={(event) =>
-                onUpdate(index, 'goodName', event.target.value)
-              }
+              onChange={(event) => onUpdate(index, 'goodName', event.target.value)}
             />
           </label>
           <label>
             Cantidad del {lineLabel} {index + 1}
             <input
+              type="number"
+              min="1"
               value={line.quantity}
-              onChange={(event) =>
-                onUpdate(index, 'quantity', event.target.value)
-              }
+              onChange={(event) => onUpdate(index, 'quantity', event.target.value)}
             />
           </label>
         </div>

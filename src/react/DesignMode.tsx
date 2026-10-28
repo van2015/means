@@ -15,10 +15,13 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
   return (
     <div>
       <h2>Modo diseño</h2>
-      <form onSubmit={(event) => {
-        event.preventDefault()
-        presenter.submit()
-      }}>
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault()
+          presenter.submit()
+        }}
+      >
         <label>
           Nombre
           <input
@@ -57,10 +60,13 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
       />
       <section>
         <h3>Catálogo de bienes y servicios</h3>
-        <form onSubmit={(event) => {
-          event.preventDefault()
-          presenter.registerGood()
-        }}>
+        <form
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            presenter.registerGood()
+          }}
+        >
           <label>
             Bien o servicio
             <input
@@ -79,10 +85,13 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
       </section>
       <section>
         <h3>Crear agente</h3>
-        <form onSubmit={(event) => {
-          event.preventDefault()
-          presenter.submitAgent()
-        }}>
+        <form
+          noValidate
+          onSubmit={(event) => {
+            event.preventDefault()
+            presenter.submitAgent()
+          }}
+        >
           <label>
             Nombre del agente
             <input
@@ -120,10 +129,13 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
       {presenter.selectedAgentId && presenter.selectedAgentView === 'recipes' && (
         <section>
           <h3>Receta propia del agente</h3>
-          <form onSubmit={(event) => {
-            event.preventDefault()
-            presenter.submitAgentRecipe()
-          }}>
+          <form
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault()
+              presenter.submitAgentRecipe()
+            }}
+          >
             <label>
               Nombre de la receta del agente
               <input
@@ -159,16 +171,22 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
       {presenter.selectedAgentId && presenter.selectedAgentView === 'rules' && (
         <section>
           <h3>Regla automática del agente</h3>
-          <form onSubmit={(event) => {
-            event.preventDefault()
-            presenter.submitAgentRule()
-          }}>
+          <form
+            noValidate
+            onSubmit={(event) => {
+              event.preventDefault()
+              presenter.submitAgentRule()
+            }}
+          >
             <label>
               Receta de la regla
               <select
                 value={`${presenter.agentRuleRecipeRef.source}:${presenter.agentRuleRecipeRef.recipeId}`}
                 onChange={(event) => {
-                  const [source, recipeId] = event.target.value.split(':') as ['catalog' | 'agent', string]
+                  const [source, recipeId] = event.target.value.split(':') as [
+                    'catalog' | 'agent',
+                    string,
+                  ]
                   presenter.setAgentRuleRecipeRef({ source, recipeId })
                 }}
               >
@@ -195,9 +213,7 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
               Bien de la condición
               <select
                 value={presenter.agentRuleConditionGoodId}
-                onChange={(event) =>
-                  presenter.setAgentRuleConditionGoodId(event.target.value)
-                }
+                onChange={(event) => presenter.setAgentRuleConditionGoodId(event.target.value)}
               >
                 <option value="">Seleccionar bien</option>
                 {presenter.goods.map((good) => (
@@ -221,7 +237,9 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
               <select
                 value={presenter.agentRuleConditionOperator}
                 onChange={(event) =>
-                  presenter.setAgentRuleConditionOperator(event.target.value as 'AT_LEAST' | 'LESS_THAN')
+                  presenter.setAgentRuleConditionOperator(
+                    event.target.value as 'AT_LEAST' | 'LESS_THAN',
+                  )
                 }
               >
                 <option value="AT_LEAST">al menos</option>

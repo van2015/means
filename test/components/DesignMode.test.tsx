@@ -46,6 +46,10 @@ describe('DesignMode', () => {
 
   beforeEach(() => {
     stores = createStores()
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+    stores.goodStore.create('Huevos')
+    stores.goodStore.create('Tortilla')
   })
 
   it('renders a recipe form with inputs, outputs and save', () => {
@@ -92,9 +96,9 @@ describe('DesignMode', () => {
 
     expect(recipeNameInput()).toHaveValue('Pan')
     expect(recipeInputGoodName(1)).toHaveValue('Harina')
-    expect(recipeInputQuantity(1)).toHaveValue('2')
+    expect(recipeInputQuantity(1)).toHaveValue(2)
     expect(recipeOutputGoodName(1)).toHaveValue('Pan')
-    expect(recipeOutputQuantity(1)).toHaveValue('1')
+    expect(recipeOutputQuantity(1)).toHaveValue(1)
   })
 
   it('saves edited recipe and shows updated data in the catalog', async () => {
@@ -471,7 +475,9 @@ describe('DesignMode', () => {
 
     expect(screen.getByText(/se requiere una receta/i)).toBeInTheDocument()
     expect(screen.getByText(/se requiere un bien para la condición/i)).toBeInTheDocument()
-    expect(screen.getByText(/la cantidad de la condición debe ser mayor que cero/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/la cantidad de la condición debe ser mayor que cero/i),
+    ).toBeInTheDocument()
     expect(agentCatalog.queryByText(/prioridad:/i)).not.toBeInTheDocument()
   })
 

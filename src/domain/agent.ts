@@ -1,21 +1,23 @@
-import type { DraftLine, Good, RecipeLine } from './recipe'
+import type { DraftLine, Good } from './recipe'
 
 import type { Recipe } from './recipe'
 
-export type InventoryLine = RecipeLine
+export type InventoryLine = {
+  goodId: string
+  quantity: number
+}
 
 export type AgentError =
   | { code: 'EMPTY_NAME' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
+  | { code: 'UNKNOWN_GOOD'; goodName: string }
 
 export type AgentDraft = {
   name: string
   inventory: DraftLine[]
 }
 
-export type AgentResult =
-  | { ok: true; agent: Agent }
-  | { ok: false; errors: AgentError[] }
+export type AgentResult = { ok: true; agent: Agent } | { ok: false; errors: AgentError[] }
 
 export type RuleConditionOperator = 'AT_LEAST' | 'LESS_THAN'
 
@@ -41,6 +43,8 @@ export type RuleError =
   | { code: 'NO_RECIPE' }
   | { code: 'NO_CONDITION_GOOD' }
   | { code: 'INVALID_CONDITION_QUANTITY' }
+  | { code: 'AGENT_NOT_FOUND' }
+  | { code: 'RULE_NOT_FOUND' }
 
 export class Agent {
   readonly id: string
@@ -64,9 +68,7 @@ export class Agent {
   }
 
   has(good: Good, quantity: number): boolean {
-    return this.inventory.some(
-      (line) => line.goodId === good.id && line.quantity === quantity,
-    )
+    return this.inventory.some((line) => line.goodId === good.id && line.quantity === quantity)
   }
 
   quantityOf(goodId: string): number {
@@ -84,7 +86,7 @@ export function validateAgent(name: string, inventory: DraftLine[]): AgentError[
   }
 
   for (const line of inventory) {
-    if (line.quantity <= 0) {
+    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
     }
   }
@@ -103,7 +105,7 @@ export function validateRule(recipeId: string, condition: RuleCondition): RuleEr
     errors.push({ code: 'NO_CONDITION_GOOD' })
   }
 
-  if (condition.quantity <= 0) {
+  if (!Number.isFinite(condition.quantity) || condition.quantity <= 0) {
     errors.push({ code: 'INVALID_CONDITION_QUANTITY' })
   }
 

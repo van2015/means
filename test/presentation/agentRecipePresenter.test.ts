@@ -10,6 +10,7 @@ describe('AgentRecipePresenter', () => {
   beforeEach(() => {
     stores = createStores()
     presenter = new AgentRecipePresenter(stores)
+    stores.goodStore.create('Harina')
     const created = stores.agentStore.create({
       name: 'Panadero',
       inventory: [{ goodName: 'Harina', quantity: 10 }],
@@ -20,6 +21,8 @@ describe('AgentRecipePresenter', () => {
   })
 
   it('creates an agent-specific recipe', () => {
+    stores.goodStore.create('Pan')
+
     presenter.setName('Pan artesanal')
     presenter.addInput()
     presenter.updateInput(0, 'goodName', 'Harina')
@@ -47,6 +50,7 @@ describe('AgentRecipePresenter', () => {
 
   it('does not submit when no agent is selected', () => {
     presenter.setAgentId(null)
+    stores.goodStore.create('Pan')
     presenter.setName('Receta huérfana')
     presenter.addInput()
     presenter.updateInput(0, 'goodName', 'Harina')
@@ -61,5 +65,22 @@ describe('AgentRecipePresenter', () => {
     expect(agent.ok).toBe(true)
     if (!agent.ok) return
     expect(agent.agent.recipes).toHaveLength(0)
+  })
+
+  it('rejects unknown goods', () => {
+    presenter.setName('Pan artesanal')
+    presenter.addInput()
+    presenter.updateInput(0, 'goodName', 'Harina desconocida')
+    presenter.updateInput(0, 'quantity', '1')
+    presenter.addOutput()
+    presenter.updateOutput(0, 'goodName', 'Pan')
+    presenter.updateOutput(0, 'quantity', '1')
+
+    presenter.submit()
+
+    expect(presenter.errors).toContainEqual({
+      code: 'UNKNOWN_GOOD',
+      goodName: 'Harina desconocida',
+    })
   })
 })

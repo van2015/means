@@ -12,6 +12,9 @@ describe('AgentStore', () => {
   })
 
   it('saves a valid agent with name and initial inventory', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const result = store.create({
       name: 'Panadero',
       inventory: [
@@ -48,6 +51,8 @@ describe('AgentStore', () => {
   })
 
   it('rejects an agent with an empty name and leaves catalog unchanged', () => {
+    goodStore.create('Harina')
+
     const result = store.create({
       name: '',
       inventory: [{ goodName: 'Harina', quantity: 10 }],
@@ -62,6 +67,9 @@ describe('AgentStore', () => {
   })
 
   it('rejects non-positive quantities and leaves catalog unchanged', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const result = store.create({
       name: 'Panadero',
       inventory: [
@@ -78,6 +86,19 @@ describe('AgentStore', () => {
       ])
     }
 
+    expect(store.count()).toBe(0)
+  })
+
+  it('rejects unknown goods in inventory', () => {
+    const result = store.create({
+      name: 'Panadero',
+      inventory: [{ goodName: 'Harina', quantity: 10 }],
+    })
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toEqual([{ code: 'UNKNOWN_GOOD', goodName: 'Harina' }])
+    }
     expect(store.count()).toBe(0)
   })
 })

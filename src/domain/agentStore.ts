@@ -1,17 +1,13 @@
 import { generateId } from './id'
 import { Agent, validateAgent, validateRule } from './agent'
-import type { AgentDraft, AgentResult, Rule, RuleCondition, RuleError } from './agent'
+import type { AgentDraft, AgentError, AgentResult, Rule, RuleCondition, RuleError } from './agent'
 import { createRecipeEntity, validateRecipe } from './recipe'
-import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
+import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
 
-export type FindAgentResult =
-  | { ok: true; agent: Agent }
-  | { ok: false; error: 'AGENT_NOT_FOUND' }
+export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: 'AGENT_NOT_FOUND' }
 
-export type RuleResult =
-  | { ok: true; rule: Rule }
-  | { ok: false; errors: RuleError[] }
+export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
 
 export class AgentStore {
   private agents: Agent[] = []
@@ -50,7 +46,7 @@ export class AgentStore {
   }
 
   create(draft: AgentDraft): AgentResult {
-    const errors = validateAgent(draft.name, draft.inventory)
+    const errors = this.validateDraft(draft)
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -60,7 +56,7 @@ export class AgentStore {
       generateId(),
       draft.name,
       draft.inventory.map((line) => ({
-        goodId: this.goodStore.resolve(line.goodName).id,
+        goodId: this.goodIdFor(line.goodName),
         quantity: line.quantity,
       })),
       [],
@@ -71,7 +67,7 @@ export class AgentStore {
   }
 
   addRecipe(agentId: string, draft: RecipeDraft): RecipeResult {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+    const errors = this.validateRecipeDraft(draft)
     if (errors.length > 0) {
       return { ok: false, errors }
     }
@@ -88,7 +84,7 @@ export class AgentStore {
   }
 
   updateRecipe(agentId: string, recipeId: string, draft: RecipeDraft): RecipeResult {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+    const errors = this.validateRecipeDraft(draft)
     if (errors.length > 0) {
       return { ok: false, errors }
     }
@@ -131,7 +127,7 @@ export class AgentStore {
 
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
     }
 
     const rule: Rule = {
@@ -145,7 +141,13 @@ export class AgentStore {
     return { ok: true, rule }
   }
 
-  updateRule(agentId: string, ruleId: string, recipeRef: Rule['recipeRef'], condition: RuleCondition, priority: number): RuleResult {
+  updateRule(
+    agentId: string,
+    ruleId: string,
+    recipeRef: Rule['recipeRef'],
+    condition: RuleCondition,
+    priority: number,
+  ): RuleResult {
     const errors = validateRule(recipeRef.recipeId, condition)
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -153,12 +155,12 @@ export class AgentStore {
 
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
     }
 
     const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
     if (index === -1) {
-      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
     }
 
     const rule: Rule = {
@@ -174,12 +176,50 @@ export class AgentStore {
     return { ok: true, rule }
   }
 
-  deleteRule(agentId: string, ruleId: string): void {
+  deleteRule(agentId: string, ruleId: string): RuleResult {
     const agentResult = this.findById(agentId)
-    if (!agentResult.ok) return
+    if (!agentResult.ok) {
+      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
+    }
+
+    const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
+    if (index === -1) {
+      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
+    }
 
     const updatedRules = agentResult.agent.rules.filter((rule) => rule.id !== ruleId)
     this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    return { ok: true, rule: agentResult.agent.rules[index] }
+  }
+
+  private validateDraft(draft: AgentDraft): AgentError[] {
+    const errors = validateAgent(draft.name, draft.inventory)
+    for (const line of draft.inventory) {
+      const result = this.goodStore.require(line.goodName)
+      if (!result.ok) {
+        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
+      }
+    }
+    return errors
+  }
+
+  private validateRecipeDraft(draft: RecipeDraft): RecipeError[] {
+    const errors = validateRecipe(draft.inputs, draft.outputs)
+    for (const line of [...draft.inputs, ...draft.outputs]) {
+      const result = this.goodStore.require(line.goodName)
+      if (!result.ok) {
+        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
+      }
+    }
+    return errors
+  }
+
+  private goodIdFor(name: string): string {
+    const result = this.goodStore.require(name)
+    if (!result.ok) {
+      throw new Error(`Unexpected missing good: ${name}`)
+    }
+    return result.good.id
   }
 
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
@@ -187,11 +227,11 @@ export class AgentStore {
       id,
       draft.name,
       draft.inputs.map((line) => ({
-        goodId: this.goodStore.resolve(line.goodName).id,
+        goodId: this.goodIdFor(line.goodName),
         quantity: line.quantity,
       })),
       draft.outputs.map((line) => ({
-        goodId: this.goodStore.resolve(line.goodName).id,
+        goodId: this.goodIdFor(line.goodName),
         quantity: line.quantity,
       })),
     )

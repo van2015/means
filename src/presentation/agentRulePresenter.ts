@@ -123,12 +123,7 @@ export class AgentRulePresenter extends Presenter {
           condition,
           priority,
         )
-      : this.agentStore.addRule(
-          this.agentIdValue,
-          this.recipeRefValue,
-          condition,
-          priority,
-        )
+      : this.agentStore.addRule(this.agentIdValue, this.recipeRefValue, condition, priority)
 
     if (result.ok) {
       this.resetForm()

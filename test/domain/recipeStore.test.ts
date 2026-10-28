@@ -13,12 +13,11 @@ describe('RecipeStore', () => {
   })
 
   it('saves a valid recipe with name, inputs and outputs', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const result = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .withOutput('Pan', 1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
     )
 
     expect(result.ok).toBe(true)
@@ -48,12 +47,9 @@ describe('RecipeStore', () => {
   })
 
   it('rejects a recipe without inputs', () => {
-    const result = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withOutput('Pan', 1)
-        .build(),
-    )
+    goodStore.create('Pan')
+
+    const result = store.create(RecipeBuilder.aRecipe().named('Pan').withOutput('Pan', 1).build())
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -64,12 +60,9 @@ describe('RecipeStore', () => {
   })
 
   it('rejects a recipe without outputs', () => {
-    const result = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .build(),
-    )
+    goodStore.create('Harina')
+
+    const result = store.create(RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).build())
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -80,12 +73,11 @@ describe('RecipeStore', () => {
   })
 
   it('rejects quantities less than or equal to zero', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const result = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 0)
-        .withOutput('Pan', -1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 0).withOutput('Pan', -1).build(),
     )
 
     expect(result.ok).toBe(false)
@@ -99,13 +91,25 @@ describe('RecipeStore', () => {
     expect(store.count()).toBe(0)
   })
 
+  it('rejects unknown goods', () => {
+    const result = store.create(
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toContainEqual({ code: 'UNKNOWN_GOOD', goodName: 'Harina' })
+      expect(result.errors).toContainEqual({ code: 'UNKNOWN_GOOD', goodName: 'Pan' })
+    }
+    expect(store.count()).toBe(0)
+  })
+
   it('deleteRecipe removes the recipe from the catalog', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const created = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .withOutput('Pan', 1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
     )
     expect(created.ok).toBe(true)
     if (!created.ok) return
@@ -121,12 +125,11 @@ describe('RecipeStore', () => {
   })
 
   it('update rejects invalid drafts and leaves the original untouched', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const created = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .withOutput('Pan', 1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
     )
     expect(created.ok).toBe(true)
     if (!created.ok) return
@@ -151,12 +154,13 @@ describe('RecipeStore', () => {
   })
 
   it('updates an existing recipe and keeps the same id', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+    goodStore.create('Harina integral')
+    goodStore.create('Pan integral')
+
     const created = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .withOutput('Pan', 1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
     )
     expect(created.ok).toBe(true)
     if (!created.ok) return
@@ -215,7 +219,11 @@ describe('RecipeStore', () => {
     expect(goodStore.all()).toContainEqual(result.good)
   })
 
-  it('creates missing goods inline and links recipes to them', () => {
+  it('links recipes to pre-existing goods without creating duplicates', () => {
+    goodStore.create('Trigo')
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
     const first = store.create(
       RecipeBuilder.aRecipe()
         .named('Harina de trigo')
@@ -226,11 +234,7 @@ describe('RecipeStore', () => {
     expect(first.ok).toBe(true)
 
     const second = store.create(
-      RecipeBuilder.aRecipe()
-        .named('Pan')
-        .withInput('Harina', 2)
-        .withOutput('Pan', 1)
-        .build(),
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
     )
     expect(second.ok).toBe(true)
 

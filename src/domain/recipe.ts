@@ -23,11 +23,10 @@ export type RecipeError =
   | { code: 'NO_INPUTS' }
   | { code: 'NO_OUTPUTS' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
+  | { code: 'UNKNOWN_GOOD'; goodName: string }
   | { code: 'RECIPE_NOT_FOUND' }
 
-export type RecipeResult =
-  | { ok: true; recipe: Recipe }
-  | { ok: false; errors: RecipeError[] }
+export type RecipeResult = { ok: true; recipe: Recipe } | { ok: false; errors: RecipeError[] }
 
 export class Recipe {
   readonly id: string
@@ -43,15 +42,11 @@ export class Recipe {
   }
 
   consumes(good: Good, quantity: number): boolean {
-    return this.inputs.some(
-      (line) => line.goodId === good.id && line.quantity === quantity,
-    )
+    return this.inputs.some((line) => line.goodId === good.id && line.quantity === quantity)
   }
 
   produces(good: Good, quantity: number): boolean {
-    return this.outputs.some(
-      (line) => line.goodId === good.id && line.quantity === quantity,
-    )
+    return this.outputs.some((line) => line.goodId === good.id && line.quantity === quantity)
   }
 
   usesGoodAsInput(goodId: string): boolean {
@@ -63,22 +58,15 @@ export class Recipe {
   }
 }
 
-function validateRequiredLines(
-  lines: unknown[],
-  error: RecipeError,
-  errors: RecipeError[],
-): void {
+function validateRequiredLines(lines: unknown[], error: RecipeError, errors: RecipeError[]): void {
   if (lines.length === 0) {
     errors.push(error)
   }
 }
 
-function validatePositiveQuantities(
-  lines: DraftLine[],
-  errors: RecipeError[],
-): void {
+function validatePositiveQuantities(lines: DraftLine[], errors: RecipeError[]): void {
   for (const line of lines) {
-    if (line.quantity <= 0) {
+    if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
     }
   }

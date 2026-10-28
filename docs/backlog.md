@@ -1,6 +1,7 @@
 # Backlog
 
 ## Context
+
 Aplicación de crafting/economía para juegos. Un único usuario alterna entre modo diseño y modo juego. En modo diseño crea y gestiona bienes, servicios, recetas, agentes, recetas propias de agentes y reglas automáticas. En modo juego el jugador no tiene inventario: posee un agente a la vez (o ninguno) y controla manualmente al poseído. Incluso cuando posee un agente, el resto de los agentes sigue ejecutando sus reglas automáticas. El usuario puede exportar e importar selecciones del mundo.
 
 **Stack:** TypeScript full-stack (React + Node.js + SQLite)

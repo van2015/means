@@ -16,7 +16,11 @@ type AgentCatalogProps = {
   onDeleteRule: (ruleId: string) => void
 }
 
-function recipeName(recipeRef: Rule['recipeRef'], catalogRecipes: Recipe[], agentRecipes: Recipe[]): string {
+function recipeName(
+  recipeRef: Rule['recipeRef'],
+  catalogRecipes: Recipe[],
+  agentRecipes: Recipe[],
+): string {
   const recipes = recipeRef.source === 'catalog' ? catalogRecipes : agentRecipes
   return recipes.find((r) => r.id === recipeRef.recipeId)?.name ?? ''
 }
@@ -102,7 +106,9 @@ export function AgentCatalog({
               <ul aria-label="Reglas del agente">
                 {agent.rules.map((rule) => (
                   <li key={rule.id}>
-                    {recipeName(rule.recipeRef, catalogRecipes, agent.recipes)} — {operatorLabel(rule.condition.operator)} {rule.condition.quantity} {goodName(goods, rule.condition.goodId)} (prioridad: {rule.priority})
+                    {recipeName(rule.recipeRef, catalogRecipes, agent.recipes)} —{' '}
+                    {operatorLabel(rule.condition.operator)} {rule.condition.quantity}{' '}
+                    {goodName(goods, rule.condition.goodId)} (prioridad: {rule.priority})
                     <button type="button" onClick={() => onEditRule(rule)}>
                       Editar
                     </button>

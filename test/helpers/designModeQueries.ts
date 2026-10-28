@@ -68,11 +68,15 @@ export function createAgentButton(): HTMLElement {
   return screen.getByRole('button', { name: /crear agente/i })
 }
 
-export function manageAgentRecipesButton(catalog: ReturnType<typeof withinAgentCatalog>): HTMLElement {
+export function manageAgentRecipesButton(
+  catalog: ReturnType<typeof withinAgentCatalog>,
+): HTMLElement {
   return catalog.getByRole('button', { name: /gestionar recetas/i })
 }
 
-export function manageAgentRulesButton(catalog: ReturnType<typeof withinAgentCatalog>): HTMLElement {
+export function manageAgentRulesButton(
+  catalog: ReturnType<typeof withinAgentCatalog>,
+): HTMLElement {
   return catalog.getByRole('button', { name: /gestionar reglas/i })
 }
 
@@ -101,7 +105,9 @@ export function agentRecipeOutputGoodName(index: number): HTMLElement {
 }
 
 export function agentRecipeOutputQuantity(index: number): HTMLElement {
-  return screen.getByLabelText(new RegExp(`cantidad del producto de receta del agente ${index}`, 'i'))
+  return screen.getByLabelText(
+    new RegExp(`cantidad del producto de receta del agente ${index}`, 'i'),
+  )
 }
 
 export function saveAgentRecipeButton(): HTMLElement {

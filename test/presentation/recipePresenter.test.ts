@@ -20,6 +20,9 @@ describe('RecipePresenter', () => {
   })
 
   it('creates a recipe and refreshes the list', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
     presenter.setName('Pan')
     presenter.addInput()
     presenter.updateInput(0, 'goodName', 'Harina')
@@ -39,14 +42,14 @@ describe('RecipePresenter', () => {
   it('shows validation errors for invalid recipes', () => {
     presenter.submit()
 
-    expect(presenter.errors).toEqual([
-      { code: 'NO_INPUTS' },
-      { code: 'NO_OUTPUTS' },
-    ])
+    expect(presenter.errors).toEqual([{ code: 'NO_INPUTS' }, { code: 'NO_OUTPUTS' }])
     expect(presenter.recipes).toHaveLength(0)
   })
 
   it('loads a recipe into the form for editing', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
     const result = stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
@@ -64,6 +67,9 @@ describe('RecipePresenter', () => {
   })
 
   it('updates an existing recipe and keeps the same id', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
     const created = stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],
@@ -81,6 +87,9 @@ describe('RecipePresenter', () => {
   })
 
   it('deletes a recipe', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
     const created = stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],

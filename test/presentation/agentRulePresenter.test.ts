@@ -13,6 +13,9 @@ describe('AgentRulePresenter', () => {
     stores = createStores()
     presenter = new AgentRulePresenter(stores)
 
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
     const recipe = stores.recipeStore.create({
       name: 'Pan',
       inputs: [{ goodName: 'Harina', quantity: 2 }],

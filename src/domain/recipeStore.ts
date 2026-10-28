@@ -1,11 +1,10 @@
 import { generateId } from './id'
 import { createRecipeEntity, validateRecipe } from './recipe'
-import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
+import type { DraftLine, Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
 
 export type FindRecipeResult =
-  | { ok: true; recipe: Recipe }
-  | { ok: false; error: 'RECIPE_NOT_FOUND' }
+  { ok: true; recipe: Recipe } | { ok: false; error: 'RECIPE_NOT_FOUND' }
 
 export class RecipeStore {
   private recipes: Recipe[] = []
@@ -36,7 +35,7 @@ export class RecipeStore {
   }
 
   create(draft: RecipeDraft): RecipeResult {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+    const errors = this.validateDraft(draft)
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -48,7 +47,7 @@ export class RecipeStore {
   }
 
   update(id: string, draft: RecipeDraft): RecipeResult {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+    const errors = this.validateDraft(draft)
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -68,20 +67,54 @@ export class RecipeStore {
     this.recipes = this.recipes.filter((recipe) => recipe.id !== id)
   }
 
+  private validateDraft(draft: RecipeDraft): RecipeError[] {
+    const errors = validateRecipe(draft.inputs, draft.outputs)
+    errors.push(...this.validateGoodsExist(draft.inputs))
+    errors.push(...this.validateGoodsExist(draft.outputs))
+    return errors
+  }
+
+  private validateGoodsExist(lines: DraftLine[]): RecipeError[] {
+    const errors: RecipeError[] = []
+    for (const line of lines) {
+      const result = this.goodStore.require(line.goodName)
+      if (!result.ok) {
+        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
+      }
+    }
+    return errors
+  }
+
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
     return createRecipeEntity(
       id,
       draft.name,
       draft.inputs.map((line) => ({
-        goodId: this.goodStore.resolve(line.goodName).id,
+        goodId: this.goodIdFor(line.goodName),
         quantity: line.quantity,
       })),
       draft.outputs.map((line) => ({
-        goodId: this.goodStore.resolve(line.goodName).id,
+        goodId: this.goodIdFor(line.goodName),
         quantity: line.quantity,
       })),
     )
   }
+
+  private goodIdFor(name: string): string {
+    const result = this.goodStore.require(name)
+    if (!result.ok) {
+      throw new Error(`Unexpected missing good: ${name}`)
+    }
+    return result.good.id
+  }
 }
 
-export type { DraftLine, Good, Recipe, RecipeDraft, RecipeError, RecipeLine, RecipeResult } from './recipe'
+export type {
+  DraftLine,
+  Good,
+  Recipe,
+  RecipeDraft,
+  RecipeError,
+  RecipeLine,
+  RecipeResult,
+} from './recipe'

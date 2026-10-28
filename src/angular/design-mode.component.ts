@@ -22,7 +22,7 @@ import { ValidationErrorsComponent } from './validation-errors.component'
     <div>
       <h2>Modo diseño (Angular)</h2>
 
-      <form (ngSubmit)="recipePresenter.submit()">
+      <form novalidate (ngSubmit)="recipePresenter.submit()">
         <label>
           Nombre
           <input
