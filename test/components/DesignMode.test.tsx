@@ -354,4 +354,63 @@ describe('DesignMode', () => {
     expect(agentCatalog.queryByText(/harina: 2/i)).not.toBeInTheDocument()
     expect(agentCatalog.queryByText(/pan: 1/i)).not.toBeInTheDocument()
   })
+
+  it('shows validation errors when saving an invalid agent-specific recipe and does not save', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
+
+    await user.type(agentRecipeNameInput(), 'Pan invalido')
+    await user.click(saveAgentRecipeButton())
+
+    expect(screen.getByText(/se requiere al menos una entrada/i)).toBeInTheDocument()
+    expect(screen.getByText(/se requiere al menos una salida/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText('Pan invalido')).not.toBeInTheDocument()
+
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '0')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '-1')
+    await user.click(saveAgentRecipeButton())
+
+    expect(screen.getByText(/la cantidad de harina debe ser mayor que cero/i)).toBeInTheDocument()
+    expect(screen.getByText(/la cantidad de pan debe ser mayor que cero/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText('Pan invalido')).not.toBeInTheDocument()
+  })
+
+  it('does not show agent-specific recipes in the general recipe catalog', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
+
+    await user.type(agentRecipeNameInput(), 'Pan artesanal')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '2')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
+
+    expect(agentCatalog.getByText('Pan artesanal')).toBeInTheDocument()
+    expect(withinRecipeCatalog().queryByText('Pan artesanal')).not.toBeInTheDocument()
+  })
 })
