@@ -72,6 +72,10 @@ export function manageAgentRecipesButton(catalog: ReturnType<typeof withinAgentC
   return catalog.getByRole('button', { name: /gestionar recetas/i })
 }
 
+export function manageAgentRulesButton(catalog: ReturnType<typeof withinAgentCatalog>): HTMLElement {
+  return catalog.getByRole('button', { name: /gestionar reglas/i })
+}
+
 export function agentRecipeNameInput(): HTMLElement {
   return screen.getByLabelText(/nombre de la receta del agente/i)
 }
@@ -102,6 +106,30 @@ export function agentRecipeOutputQuantity(index: number): HTMLElement {
 
 export function saveAgentRecipeButton(): HTMLElement {
   return screen.getByRole('button', { name: /guardar receta del agente/i })
+}
+
+export function ruleRecipeSelect(): HTMLElement {
+  return screen.getByLabelText(/receta de la regla/i)
+}
+
+export function ruleConditionGoodInput(): HTMLElement {
+  return screen.getByLabelText(/bien de la condición/i)
+}
+
+export function ruleConditionQuantityInput(): HTMLElement {
+  return screen.getByLabelText(/cantidad de la condición/i)
+}
+
+export function ruleConditionOperatorSelect(): HTMLElement {
+  return screen.getByLabelText(/operador de la condición/i)
+}
+
+export function rulePriorityInput(): HTMLElement {
+  return screen.getByLabelText(/prioridad de la regla/i)
+}
+
+export function saveRuleButton(): HTMLElement {
+  return screen.getByRole('button', { name: /guardar regla/i })
 }
 
 export function editButton(scope: Screen | ReturnType<typeof within> = screen): HTMLElement {

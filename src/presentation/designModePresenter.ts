@@ -1,5 +1,6 @@
 import { agentStore } from '@/domain/agentStore'
 import type { Agent, AgentError } from '@/domain/agentStore'
+import type { Rule, RuleError, RuleRecipeRef } from '@/domain/agent'
 import { goodStore } from '@/domain/goodStore'
 import type { Good } from '@/domain/goodStore'
 import { recipeStore } from '@/domain/recipeStore'
@@ -25,11 +26,19 @@ export class DesignModePresenter {
   private agentErrorsValue: AgentError[] = []
   private agentsValue = agentStore.all()
   private selectedAgentIdValue: string | null = null
+  private selectedAgentViewValue: 'recipes' | 'rules' | null = null
   private agentRecipeNameValue = ''
   private agentRecipeInputsValue: LineDraft[] = []
   private agentRecipeOutputsValue: LineDraft[] = []
   private agentRecipeErrorsValue: RecipeError[] = []
   private agentRecipeEditingIdValue: string | null = null
+  private agentRuleRecipeRefValue: RuleRecipeRef = { source: 'catalog', recipeId: '' }
+  private agentRuleConditionGoodNameValue = ''
+  private agentRuleConditionQuantityValue = ''
+  private agentRuleConditionOperatorValue: 'AT_LEAST' | 'LESS_THAN' = 'AT_LEAST'
+  private agentRulePriorityValue = ''
+  private agentRuleErrorsValue: RuleError[] = []
+  private agentRuleEditingIdValue: string | null = null
   private listeners = new Set<() => void>()
 
   get name(): string {
@@ -106,6 +115,38 @@ export class DesignModePresenter {
 
   get agentRecipeEditingId(): string | null {
     return this.agentRecipeEditingIdValue
+  }
+
+  get selectedAgentView(): 'recipes' | 'rules' | null {
+    return this.selectedAgentViewValue
+  }
+
+  get agentRuleRecipeRef(): RuleRecipeRef {
+    return this.agentRuleRecipeRefValue
+  }
+
+  get agentRuleConditionGoodName(): string {
+    return this.agentRuleConditionGoodNameValue
+  }
+
+  get agentRuleConditionQuantity(): string {
+    return this.agentRuleConditionQuantityValue
+  }
+
+  get agentRuleConditionOperator(): 'AT_LEAST' | 'LESS_THAN' {
+    return this.agentRuleConditionOperatorValue
+  }
+
+  get agentRulePriority(): string {
+    return this.agentRulePriorityValue
+  }
+
+  get agentRuleErrors(): RuleError[] {
+    return this.agentRuleErrorsValue
+  }
+
+  get agentRuleEditingId(): string | null {
+    return this.agentRuleEditingIdValue
   }
 
   subscribe(callback: () => void): () => void {
@@ -262,11 +303,19 @@ export class DesignModePresenter {
 
   selectAgent(agentId: string): void {
     this.selectedAgentIdValue = agentId
+    this.selectedAgentViewValue = 'recipes'
     this.agentRecipeNameValue = ''
     this.agentRecipeInputsValue = []
     this.agentRecipeOutputsValue = []
     this.agentRecipeErrorsValue = []
     this.agentRecipeEditingIdValue = null
+    this.notify()
+  }
+
+  selectAgentRules(agentId: string): void {
+    this.selectedAgentIdValue = agentId
+    this.selectedAgentViewValue = 'rules'
+    this.resetAgentRuleForm()
     this.notify()
   }
 
@@ -358,5 +407,95 @@ export class DesignModePresenter {
     agentStore.deleteRecipe(this.selectedAgentIdValue, recipeId)
     this.agentsValue = agentStore.all()
     this.notify()
+  }
+
+  setAgentRuleRecipeRef(ref: RuleRecipeRef): void {
+    this.agentRuleRecipeRefValue = ref
+    this.notify()
+  }
+
+  setAgentRuleConditionGoodName(name: string): void {
+    this.agentRuleConditionGoodNameValue = name
+    this.notify()
+  }
+
+  setAgentRuleConditionQuantity(value: string): void {
+    this.agentRuleConditionQuantityValue = value
+    this.notify()
+  }
+
+  setAgentRuleConditionOperator(operator: 'AT_LEAST' | 'LESS_THAN'): void {
+    this.agentRuleConditionOperatorValue = operator
+    this.notify()
+  }
+
+  setAgentRulePriority(value: string): void {
+    this.agentRulePriorityValue = value
+    this.notify()
+  }
+
+  submitAgentRule(): void {
+    if (!this.selectedAgentIdValue) return
+
+    const result = this.agentRuleEditingIdValue
+      ? agentStore.updateRule(
+          this.selectedAgentIdValue,
+          this.agentRuleEditingIdValue,
+          this.agentRuleRecipeRefValue,
+          {
+            goodName: this.agentRuleConditionGoodNameValue,
+            quantity: Number(this.agentRuleConditionQuantityValue),
+            operator: this.agentRuleConditionOperatorValue,
+          },
+          Number(this.agentRulePriorityValue),
+        )
+      : agentStore.addRule(
+          this.selectedAgentIdValue,
+          this.agentRuleRecipeRefValue,
+          {
+            goodName: this.agentRuleConditionGoodNameValue,
+            quantity: Number(this.agentRuleConditionQuantityValue),
+            operator: this.agentRuleConditionOperatorValue,
+          },
+          Number(this.agentRulePriorityValue),
+        )
+
+    if (result.ok) {
+      this.agentsValue = agentStore.all()
+      this.goodsValue = goodStore.all()
+      this.resetAgentRuleForm()
+    } else {
+      this.agentRuleErrorsValue = result.errors
+    }
+
+    this.notify()
+  }
+
+  startEditAgentRule(rule: Rule): void {
+    this.agentRuleEditingIdValue = rule.id
+    this.agentRuleRecipeRefValue = rule.recipeRef
+    this.agentRuleConditionGoodNameValue = rule.condition.goodName
+    this.agentRuleConditionQuantityValue = String(rule.condition.quantity)
+    this.agentRuleConditionOperatorValue = rule.condition.operator
+    this.agentRulePriorityValue = String(rule.priority)
+    this.agentRuleErrorsValue = []
+    this.notify()
+  }
+
+  deleteAgentRule(ruleId: string): void {
+    if (!this.selectedAgentIdValue) return
+    agentStore.deleteRule(this.selectedAgentIdValue, ruleId)
+    this.agentsValue = agentStore.all()
+    this.notify()
+  }
+
+  private resetAgentRuleForm(): void {
+    this.agentRuleRecipeRefValue = { source: 'catalog', recipeId: '' } as RuleRecipeRef
+    this.agentRuleConditionGoodNameValue = ''
+    this.agentRuleConditionQuantityValue = ''
+    this.agentRuleConditionOperatorValue = 'AT_LEAST'
+    this.agentRulePriorityValue = ''
+    this.agentRuleErrorsValue = []
+    this.agentRuleEditingIdValue = null
   }
 }

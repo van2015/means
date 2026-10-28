@@ -102,12 +102,17 @@ export function DesignMode() {
       <AgentCatalog
         agents={presenter.agents}
         goods={presenter.goods}
+        catalogRecipes={presenter.recipes}
         selectedAgentId={presenter.selectedAgentId}
+        selectedAgentView={presenter.selectedAgentView}
         onSelectAgent={presenter.selectAgent}
+        onSelectAgentRules={presenter.selectAgentRules}
         onEditRecipe={presenter.startEditAgentRecipe}
         onDeleteRecipe={presenter.deleteAgentRecipe}
+        onEditRule={presenter.startEditAgentRule}
+        onDeleteRule={presenter.deleteAgentRule}
       />
-      {presenter.selectedAgentId && (
+      {presenter.selectedAgentId && presenter.selectedAgentView === 'recipes' && (
         <section>
           <h3>Receta propia del agente</h3>
           <form onSubmit={(event) => {
@@ -144,6 +149,79 @@ export function DesignMode() {
             <button type="submit">Guardar receta del agente</button>
           </form>
           <ValidationErrors errors={presenter.agentRecipeErrors} />
+        </section>
+      )}
+      {presenter.selectedAgentId && presenter.selectedAgentView === 'rules' && (
+        <section>
+          <h3>Regla automática del agente</h3>
+          <form onSubmit={(event) => {
+            event.preventDefault()
+            presenter.submitAgentRule()
+          }}>
+            <label>
+              Receta de la regla
+              <select
+                value={`${presenter.agentRuleRecipeRef.source}:${presenter.agentRuleRecipeRef.recipeId}`}
+                onChange={(event) => {
+                  const [source, recipeId] = event.target.value.split(':') as ['catalog' | 'agent', string]
+                  presenter.setAgentRuleRecipeRef({ source, recipeId })
+                }}
+              >
+                <option value="">Seleccionar receta</option>
+                <optgroup label="Catálogo general">
+                  {presenter.recipes.map((recipe) => (
+                    <option key={recipe.id} value={`catalog:${recipe.id}`}>
+                      {recipe.name}
+                    </option>
+                  ))}
+                </optgroup>
+                <optgroup label="Recetas propias del agente">
+                  {presenter.agents
+                    .find((agent) => agent.id === presenter.selectedAgentId)
+                    ?.recipes.map((recipe) => (
+                      <option key={recipe.id} value={`agent:${recipe.id}`}>
+                        {recipe.name}
+                      </option>
+                    ))}
+                </optgroup>
+              </select>
+            </label>
+            <label>
+              Bien de la condición
+              <input
+                value={presenter.agentRuleConditionGoodName}
+                onChange={(event) => presenter.setAgentRuleConditionGoodName(event.target.value)}
+              />
+            </label>
+            <label>
+              Cantidad de la condición
+              <input
+                value={presenter.agentRuleConditionQuantity}
+                onChange={(event) => presenter.setAgentRuleConditionQuantity(event.target.value)}
+              />
+            </label>
+            <label>
+              Operador de la condición
+              <select
+                value={presenter.agentRuleConditionOperator}
+                onChange={(event) =>
+                  presenter.setAgentRuleConditionOperator(event.target.value as 'AT_LEAST' | 'LESS_THAN')
+                }
+              >
+                <option value="AT_LEAST">al menos</option>
+                <option value="LESS_THAN">menos de</option>
+              </select>
+            </label>
+            <label>
+              Prioridad de la regla
+              <input
+                value={presenter.agentRulePriority}
+                onChange={(event) => presenter.setAgentRulePriority(event.target.value)}
+              />
+            </label>
+            <button type="submit">Guardar regla</button>
+          </form>
+          <ValidationErrors errors={presenter.agentRuleErrors} />
         </section>
       )}
     </div>

@@ -24,14 +24,21 @@ import {
   editButton,
   goodNameInput,
   manageAgentRecipesButton,
+  manageAgentRulesButton,
   recipeInputGoodName,
   recipeInputQuantity,
   recipeNameInput,
   recipeOutputGoodName,
   recipeOutputQuantity,
   registerGoodButton,
+  ruleConditionGoodInput,
+  ruleConditionOperatorSelect,
+  ruleConditionQuantityInput,
+  rulePriorityInput,
+  ruleRecipeSelect,
   saveAgentRecipeButton,
   saveRecipeButton,
+  saveRuleButton,
   withinAgentCatalog,
   withinRecipeCatalog,
 } from '../helpers/designModeQueries'
@@ -412,5 +419,57 @@ describe('DesignMode', () => {
 
     expect(agentCatalog.getByText('Pan artesanal')).toBeInTheDocument()
     expect(withinRecipeCatalog().queryByText('Pan artesanal')).not.toBeInTheDocument()
+  })
+
+  it('creates an automatic rule for an agent and shows it in the ordered rule list', async () => {
+    const recipe = recipeStore.create({
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(recipe.ok).toBe(true)
+    if (!recipe.ok) return
+
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${recipe.recipe.id}`)
+    await user.type(ruleConditionGoodInput(), 'Harina')
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.selectOptions(ruleConditionOperatorSelect(), 'AT_LEAST')
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+
+    expect(agentCatalog.getByText(/Pan — al menos 2 Harina/i)).toBeInTheDocument()
+    expect(agentCatalog.getByText(/prioridad: 1/i)).toBeInTheDocument()
+  })
+
+  it('shows validation errors when saving a rule without recipe or condition', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+    await user.click(saveRuleButton())
+
+    expect(screen.getByText(/se requiere una receta/i)).toBeInTheDocument()
+    expect(screen.getByText(/se requiere un bien para la condición/i)).toBeInTheDocument()
+    expect(screen.getByText(/la cantidad de la condición debe ser mayor que cero/i)).toBeInTheDocument()
+    expect(agentCatalog.queryByText(/prioridad:/i)).not.toBeInTheDocument()
   })
 })

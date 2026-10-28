@@ -1,7 +1,7 @@
-import type { AgentError } from '@/domain/agent'
+import type { AgentError, RuleError } from '@/domain/agent'
 import type { RecipeError } from '@/domain/recipeStore'
 
-type ValidationError = RecipeError | AgentError
+type ValidationError = RecipeError | AgentError | RuleError
 
 function errorMessage(error: ValidationError): string {
   switch (error.code) {
@@ -15,6 +15,12 @@ function errorMessage(error: ValidationError): string {
       return 'Receta no encontrada'
     case 'EMPTY_NAME':
       return 'El nombre no puede estar vacío'
+    case 'NO_RECIPE':
+      return 'Se requiere una receta'
+    case 'NO_CONDITION_GOOD':
+      return 'Se requiere un bien para la condición'
+    case 'INVALID_CONDITION_QUANTITY':
+      return 'La cantidad de la condición debe ser mayor que cero'
   }
 }
 

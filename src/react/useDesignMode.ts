@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { Rule, RuleRecipeRef } from '@/domain/agent'
 import type { Recipe } from '@/domain/recipeStore'
 import { DesignModePresenter } from '@/presentation/designModePresenter'
 import type { LineDraft } from '@/presentation/designModePresenter'
@@ -25,11 +26,19 @@ export function useDesignMode() {
     agents: presenter.agents,
     agentErrors: presenter.agentErrors,
     selectedAgentId: presenter.selectedAgentId,
+    selectedAgentView: presenter.selectedAgentView,
     agentRecipeName: presenter.agentRecipeName,
     agentRecipeInputs: presenter.agentRecipeInputs,
     agentRecipeOutputs: presenter.agentRecipeOutputs,
     agentRecipeErrors: presenter.agentRecipeErrors,
     agentRecipeEditingId: presenter.agentRecipeEditingId,
+    agentRuleRecipeRef: presenter.agentRuleRecipeRef,
+    agentRuleConditionGoodName: presenter.agentRuleConditionGoodName,
+    agentRuleConditionQuantity: presenter.agentRuleConditionQuantity,
+    agentRuleConditionOperator: presenter.agentRuleConditionOperator,
+    agentRulePriority: presenter.agentRulePriority,
+    agentRuleErrors: presenter.agentRuleErrors,
+    agentRuleEditingId: presenter.agentRuleEditingId,
     setName: (name: string) => presenter.setName(name),
     addInput: () => presenter.addInput(),
     updateInput: (index: number, field: keyof LineDraft, value: string) =>
@@ -48,6 +57,7 @@ export function useDesignMode() {
       presenter.updateAgentInventoryLine(index, field, value),
     submitAgent: () => presenter.submitAgent(),
     selectAgent: (agentId: string) => presenter.selectAgent(agentId),
+    selectAgentRules: (agentId: string) => presenter.selectAgentRules(agentId),
     setAgentRecipeName: (name: string) => presenter.setAgentRecipeName(name),
     addAgentRecipeInput: () => presenter.addAgentRecipeInput(),
     updateAgentRecipeInput: (index: number, field: keyof LineDraft, value: string) =>
@@ -58,5 +68,14 @@ export function useDesignMode() {
     submitAgentRecipe: () => presenter.submitAgentRecipe(),
     startEditAgentRecipe: (recipe: Recipe) => presenter.startEditAgentRecipe(recipe),
     deleteAgentRecipe: (recipeId: string) => presenter.deleteAgentRecipe(recipeId),
+    setAgentRuleRecipeRef: (ref: RuleRecipeRef) => presenter.setAgentRuleRecipeRef(ref),
+    setAgentRuleConditionGoodName: (name: string) => presenter.setAgentRuleConditionGoodName(name),
+    setAgentRuleConditionQuantity: (value: string) => presenter.setAgentRuleConditionQuantity(value),
+    setAgentRuleConditionOperator: (operator: 'AT_LEAST' | 'LESS_THAN') =>
+      presenter.setAgentRuleConditionOperator(operator),
+    setAgentRulePriority: (value: string) => presenter.setAgentRulePriority(value),
+    submitAgentRule: () => presenter.submitAgentRule(),
+    startEditAgentRule: (rule: Rule) => presenter.startEditAgentRule(rule),
+    deleteAgentRule: (ruleId: string) => presenter.deleteAgentRule(ruleId),
   }
 }

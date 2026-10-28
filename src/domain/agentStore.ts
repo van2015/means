@@ -1,5 +1,5 @@
-import { Agent, validateAgent } from './agent'
-import type { AgentDraft, AgentResult } from './agent'
+import { Agent, validateAgent, validateRule } from './agent'
+import type { AgentDraft, AgentResult, Rule, RuleCondition, RuleError } from './agent'
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
@@ -8,6 +8,10 @@ import { goodStore } from './goodStore'
 export type FindAgentResult =
   | { ok: true; agent: Agent }
   | { ok: false; error: 'AGENT_NOT_FOUND' }
+
+export type RuleResult =
+  | { ok: true; rule: Rule }
+  | { ok: false; errors: RuleError[] }
 
 export class AgentStore {
   private agents: Agent[] = []
@@ -60,6 +64,7 @@ export class AgentStore {
         quantity: line.quantity,
       })),
       [],
+      [],
     )
     this.agents.push(agent)
     return { ok: true, agent }
@@ -78,7 +83,7 @@ export class AgentStore {
 
     const recipe = this.buildRecipe(generateId(), draft)
     const updatedRecipes = [...agentResult.agent.recipes, recipe]
-    this.replaceAgent(agentResult.agent, updatedRecipes)
+    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
     return { ok: true, recipe }
   }
 
@@ -101,7 +106,7 @@ export class AgentStore {
     const recipe = this.buildRecipe(recipeId, draft)
     const updatedRecipes = [...agentResult.agent.recipes]
     updatedRecipes[index] = recipe
-    this.replaceAgent(agentResult.agent, updatedRecipes)
+    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
     return { ok: true, recipe }
   }
 
@@ -110,7 +115,70 @@ export class AgentStore {
     if (!agentResult.ok) return
 
     const updatedRecipes = agentResult.agent.recipes.filter((recipe) => recipe.id !== recipeId)
-    this.replaceAgent(agentResult.agent, updatedRecipes)
+    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
+  }
+
+  addRule(
+    agentId: string,
+    recipeRef: Rule['recipeRef'],
+    condition: RuleCondition,
+    priority: number,
+  ): RuleResult {
+    const errors = validateRule(recipeRef.recipeId, condition)
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
+      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+    }
+
+    const rule: Rule = {
+      id: generateId(),
+      recipeRef,
+      condition,
+      priority,
+    }
+    const updatedRules = [...agentResult.agent.rules, rule]
+    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    return { ok: true, rule }
+  }
+
+  updateRule(agentId: string, ruleId: string, recipeRef: Rule['recipeRef'], condition: RuleCondition, priority: number): RuleResult {
+    const errors = validateRule(recipeRef.recipeId, condition)
+    if (errors.length > 0) {
+      return { ok: false, errors }
+    }
+
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
+      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+    }
+
+    const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
+    if (index === -1) {
+      return { ok: false, errors: [{ code: 'NO_RECIPE' }] }
+    }
+
+    const rule: Rule = {
+      id: ruleId,
+      recipeRef,
+      condition,
+      priority,
+    }
+    const updatedRules = [...agentResult.agent.rules]
+    updatedRules[index] = rule
+    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    return { ok: true, rule }
+  }
+
+  deleteRule(agentId: string, ruleId: string): void {
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) return
+
+    const updatedRules = agentResult.agent.rules.filter((rule) => rule.id !== ruleId)
+    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
   }
 
   private buildRecipe(id: string, draft: RecipeDraft): Recipe {
@@ -128,11 +196,11 @@ export class AgentStore {
     )
   }
 
-  private replaceAgent(agent: Agent, recipes: Recipe[]): void {
+  private replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {
     const index = this.agents.findIndex((a) => a.id === agent.id)
     if (index === -1) return
 
-    this.agents[index] = new Agent(agent.id, agent.name, agent.inventory, recipes)
+    this.agents[index] = new Agent(agent.id, agent.name, agent.inventory, recipes, rules)
   }
 }
 
@@ -142,4 +210,12 @@ function generateId(): string {
 
 export const agentStore = new AgentStore(goodStore)
 
-export type { Agent, AgentDraft, AgentError } from './agent'
+export type {
+  Agent,
+  AgentDraft,
+  AgentError,
+  Rule,
+  RuleCondition,
+  RuleError,
+  RuleRecipeRef,
+} from './agent'
