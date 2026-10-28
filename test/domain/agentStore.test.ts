@@ -101,4 +101,24 @@ describe('AgentStore', () => {
     }
     expect(store.count()).toBe(0)
   })
+
+  it('rejects duplicate agent names', () => {
+    goodStore.create('Harina')
+
+    const first = store.create({
+      name: 'Panadero',
+      inventory: [{ goodName: 'Harina', quantity: 10 }],
+    })
+    expect(first.ok).toBe(true)
+
+    const second = store.create({
+      name: 'Panadero',
+      inventory: [{ goodName: 'Harina', quantity: 5 }],
+    })
+    expect(second.ok).toBe(false)
+    if (!second.ok) {
+      expect(second.errors).toContainEqual({ code: 'AGENT_NAME_EXISTS' })
+    }
+    expect(store.count()).toBe(1)
+  })
 })

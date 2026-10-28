@@ -33,6 +33,8 @@ export class GoodPresenter extends Presenter {
     if (result.ok) {
       this.goodNameValue = ''
       this.goodErrorValue = null
+    } else if (result.error === 'DUPLICATE_NAME') {
+      this.goodErrorValue = 'El bien ya está registrado'
     } else {
       this.goodErrorValue = 'El nombre no puede estar vacío'
     }

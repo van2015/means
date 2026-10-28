@@ -13,10 +13,14 @@ export function errorMessage(error: ValidationError): string {
       return `La cantidad de ${error.goodName} debe ser mayor que cero`
     case 'UNKNOWN_GOOD':
       return `El bien "${error.goodName}" no está registrado`
+    case 'RECIPE_NAME_EXISTS':
+      return 'Ya existe una receta con ese nombre'
     case 'RECIPE_NOT_FOUND':
       return 'Receta no encontrada'
     case 'EMPTY_NAME':
       return 'El nombre no puede estar vacío'
+    case 'AGENT_NAME_EXISTS':
+      return 'Ya existe un agente con ese nombre'
     case 'NO_RECIPE':
       return 'Se requiere una receta'
     case 'NO_CONDITION_GOOD':

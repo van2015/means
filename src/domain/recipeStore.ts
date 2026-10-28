@@ -36,6 +36,9 @@ export class RecipeStore {
 
   create(draft: RecipeDraft): RecipeResult {
     const errors = this.validateDraft(draft)
+    if (this.nameIsTaken(draft.name)) {
+      errors.push({ code: 'RECIPE_NAME_EXISTS' })
+    }
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -48,6 +51,9 @@ export class RecipeStore {
 
   update(id: string, draft: RecipeDraft): RecipeResult {
     const errors = this.validateDraft(draft)
+    if (this.nameIsTaken(draft.name, id)) {
+      errors.push({ code: 'RECIPE_NAME_EXISTS' })
+    }
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -72,6 +78,10 @@ export class RecipeStore {
     errors.push(...this.validateGoodsExist(draft.inputs))
     errors.push(...this.validateGoodsExist(draft.outputs))
     return errors
+  }
+
+  private nameIsTaken(name: string, excludeId?: string): boolean {
+    return this.recipes.some((recipe) => recipe.name === name && recipe.id !== excludeId)
   }
 
   private validateGoodsExist(lines: DraftLine[]): RecipeError[] {

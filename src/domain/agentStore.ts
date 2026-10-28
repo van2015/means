@@ -47,6 +47,9 @@ export class AgentStore {
 
   create(draft: AgentDraft): AgentResult {
     const errors = this.validateDraft(draft)
+    if (this.nameIsTaken(draft.name)) {
+      errors.push({ code: 'AGENT_NAME_EXISTS' })
+    }
 
     if (errors.length > 0) {
       return { ok: false, errors }
@@ -201,6 +204,10 @@ export class AgentStore {
       }
     }
     return errors
+  }
+
+  private nameIsTaken(name: string, excludeId?: string): boolean {
+    return this.agents.some((agent) => agent.name === name && agent.id !== excludeId)
   }
 
   private validateRecipeDraft(draft: RecipeDraft): RecipeError[] {

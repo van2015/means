@@ -103,6 +103,42 @@ describe('RecipeStore', () => {
     }
     expect(store.count()).toBe(0)
   })
+  it('rejects duplicate recipe names', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
+    const first = store.create(
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
+    )
+    expect(first.ok).toBe(true)
+
+    const second = store.create(
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 1).withOutput('Pan', 2).build(),
+    )
+    expect(second.ok).toBe(false)
+    if (!second.ok) {
+      expect(second.errors).toContainEqual({ code: 'RECIPE_NAME_EXISTS' })
+    }
+    expect(store.count()).toBe(1)
+  })
+
+  it('allows keeping the same name when updating a recipe', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
+    const created = store.create(
+      RecipeBuilder.aRecipe().named('Pan').withInput('Harina', 2).withOutput('Pan', 1).build(),
+    )
+    expect(created.ok).toBe(true)
+    if (!created.ok) return
+
+    const updated = store.update(created.recipe.id, {
+      name: 'Pan',
+      inputs: [{ goodName: 'Harina', quantity: 3 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(updated.ok).toBe(true)
+  })
 
   it('deleteRecipe removes the recipe from the catalog', () => {
     goodStore.create('Harina')
@@ -217,6 +253,17 @@ describe('RecipeStore', () => {
     expect(result.good.name).toBe('Harina')
     expect(goodStore.hasNamed('Harina')).toBe(true)
     expect(goodStore.all()).toContainEqual(result.good)
+  })
+
+  it('createGood rejects duplicate names', () => {
+    const first = goodStore.create('Harina')
+    expect(first.ok).toBe(true)
+
+    const second = goodStore.create('Harina')
+    expect(second.ok).toBe(false)
+    if (second.ok) return
+    expect(second.error).toBe('DUPLICATE_NAME')
+    expect(goodStore.all()).toHaveLength(1)
   })
 
   it('links recipes to pre-existing goods without creating duplicates', () => {

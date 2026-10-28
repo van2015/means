@@ -3,7 +3,8 @@ import type { Good } from './recipe'
 
 export type { Good }
 
-type CreateGoodResult = { ok: true; good: Good } | { ok: false; error: 'EMPTY_NAME' }
+type CreateGoodResult =
+  { ok: true; good: Good } | { ok: false; error: 'EMPTY_NAME' | 'DUPLICATE_NAME' }
 
 export type FindGoodIdResult = { ok: true; id: string } | { ok: false; error: 'GOOD_NOT_FOUND' }
 
@@ -45,16 +46,13 @@ export class GoodStore {
       return { ok: false, error: 'EMPTY_NAME' }
     }
 
-    const good = this.resolve(name)
-    return { ok: true, good }
-  }
+    if (this.hasNamed(name)) {
+      return { ok: false, error: 'DUPLICATE_NAME' }
+    }
 
-  resolve(name: string): Good {
-    const existing = this.goods.find((g) => g.name === name)
-    if (existing) return existing
     const created: Good = { id: generateId(), name }
     this.goods.push(created)
-    return created
+    return { ok: true, good: created }
   }
 
   require(name: string): FindGoodResult {

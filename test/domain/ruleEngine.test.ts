@@ -10,8 +10,9 @@ describe('rule engine', () => {
 
   beforeEach(() => {
     stores = createStores()
-    const good = stores.goodStore.resolve('Harina')
-    goodId = good.id
+    const good = stores.goodStore.create('Harina')
+    if (!good.ok) throw new Error('Good creation failed')
+    goodId = good.good.id
     agent = new Agent('1', 'Panadero', [{ goodId, quantity: 5 }])
   })
 

@@ -1,5 +1,6 @@
-import type { Recipe } from '@/domain/recipeStore'
 import type { Good } from '@/domain/goodStore'
+import type { Recipe } from '@/domain/recipeStore'
+import { goodName } from './catalogHelpers'
 
 type RecipeCatalogProps = {
   recipes: Recipe[]
@@ -26,22 +27,16 @@ function RecipeCatalogItem({ recipe, goods, onEdit, onDelete }: RecipeCatalogIte
         Eliminar
       </button>
       <ul>
-        {recipe.inputs.map((line, index) => {
-          const good = goods.find((g) => g.id === line.goodId)
-          return (
-            <li key={index}>
-              Insumo: {good?.name}: {line.quantity}
-            </li>
-          )
-        })}
-        {recipe.outputs.map((line, index) => {
-          const good = goods.find((g) => g.id === line.goodId)
-          return (
-            <li key={index}>
-              Producto: {good?.name}: {line.quantity}
-            </li>
-          )
-        })}
+        {recipe.inputs.map((line, index) => (
+          <li key={index}>
+            Insumo: {goodName(goods, line.goodId)}: {line.quantity}
+          </li>
+        ))}
+        {recipe.outputs.map((line, index) => (
+          <li key={index}>
+            Producto: {goodName(goods, line.goodId)}: {line.quantity}
+          </li>
+        ))}
       </ul>
     </li>
   )

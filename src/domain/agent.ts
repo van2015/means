@@ -11,6 +11,7 @@ export type AgentError =
   | { code: 'EMPTY_NAME' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
   | { code: 'UNKNOWN_GOOD'; goodName: string }
+  | { code: 'AGENT_NAME_EXISTS' }
 
 export type AgentDraft = {
   name: string

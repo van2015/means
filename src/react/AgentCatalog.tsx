@@ -1,6 +1,7 @@
 import type { Agent, Rule } from '@/domain/agentStore'
 import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
+import { goodName } from './catalogHelpers'
 
 type AgentCatalogProps = {
   agents: Agent[]
@@ -22,15 +23,11 @@ function recipeName(
   agentRecipes: Recipe[],
 ): string {
   const recipes = recipeRef.source === 'catalog' ? catalogRecipes : agentRecipes
-  return recipes.find((r) => r.id === recipeRef.recipeId)?.name ?? ''
+  return recipes.find((recipe) => recipe.id === recipeRef.recipeId)?.name ?? ''
 }
 
 function operatorLabel(operator: Rule['condition']['operator']): string {
   return operator === 'AT_LEAST' ? 'al menos' : 'menos de'
-}
-
-function goodName(goods: Good[], goodId: string): string {
-  return goods.find((g) => g.id === goodId)?.name ?? ''
 }
 
 export function AgentCatalog({
@@ -60,14 +57,11 @@ export function AgentCatalog({
               Gestionar reglas
             </button>
             <ul>
-              {agent.inventory.map((line, index) => {
-                const good = goods.find((g) => g.id === line.goodId)
-                return (
-                  <li key={index}>
-                    {good?.name}: {line.quantity}
-                  </li>
-                )
-              })}
+              {agent.inventory.map((line, index) => (
+                <li key={index}>
+                  {goodName(goods, line.goodId)}: {line.quantity}
+                </li>
+              ))}
             </ul>
             {selectedAgentId === agent.id && selectedAgentView === 'recipes' && (
               <ul>
@@ -81,22 +75,16 @@ export function AgentCatalog({
                       Eliminar
                     </button>
                     <ul>
-                      {recipe.inputs.map((line, index) => {
-                        const good = goods.find((g) => g.id === line.goodId)
-                        return (
-                          <li key={index}>
-                            Insumo: {good?.name}: {line.quantity}
-                          </li>
-                        )
-                      })}
-                      {recipe.outputs.map((line, index) => {
-                        const good = goods.find((g) => g.id === line.goodId)
-                        return (
-                          <li key={index}>
-                            Producto: {good?.name}: {line.quantity}
-                          </li>
-                        )
-                      })}
+                      {recipe.inputs.map((line, index) => (
+                        <li key={index}>
+                          Insumo: {goodName(goods, line.goodId)}: {line.quantity}
+                        </li>
+                      ))}
+                      {recipe.outputs.map((line, index) => (
+                        <li key={index}>
+                          Producto: {goodName(goods, line.goodId)}: {line.quantity}
+                        </li>
+                      ))}
                     </ul>
                   </li>
                 ))}
