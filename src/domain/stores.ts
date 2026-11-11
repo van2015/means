@@ -11,6 +11,6 @@ export type Stores = {
 export function createStores(): Stores {
   const goodStore = new GoodStore()
   const recipeStore = new RecipeStore(goodStore)
-  const agentStore = new AgentStore(goodStore)
+  const agentStore = new AgentStore(goodStore, recipeStore)
   return { goodStore, recipeStore, agentStore }
 }

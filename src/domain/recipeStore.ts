@@ -74,7 +74,7 @@ export class RecipeStore {
   }
 
   private validateDraft(draft: RecipeDraft): RecipeError[] {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+    const errors = validateRecipe(draft.name, draft.inputs, draft.outputs)
     errors.push(...this.validateGoodsExist(draft.inputs))
     errors.push(...this.validateGoodsExist(draft.outputs))
     return errors

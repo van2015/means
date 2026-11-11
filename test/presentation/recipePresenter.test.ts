@@ -42,7 +42,11 @@ describe('RecipePresenter', () => {
   it('shows validation errors for invalid recipes', () => {
     presenter.submit()
 
-    expect(presenter.errors).toEqual([{ code: 'NO_INPUTS' }, { code: 'NO_OUTPUTS' }])
+    expect(presenter.errors).toEqual([
+      { code: 'EMPTY_NAME' },
+      { code: 'NO_INPUTS' },
+      { code: 'NO_OUTPUTS' },
+    ])
     expect(presenter.recipes).toHaveLength(0)
   })
 

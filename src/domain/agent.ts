@@ -42,7 +42,9 @@ export type Rule = {
 
 export type RuleError =
   | { code: 'NO_RECIPE' }
+  | { code: 'RECIPE_NOT_FOUND' }
   | { code: 'NO_CONDITION_GOOD' }
+  | { code: 'UNKNOWN_CONDITION_GOOD' }
   | { code: 'INVALID_CONDITION_QUANTITY' }
   | { code: 'AGENT_NOT_FOUND' }
   | { code: 'RULE_NOT_FOUND' }

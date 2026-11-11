@@ -94,9 +94,11 @@ export function useDesignMode(stores: Stores) {
     addAgentRecipeInput: () => agentRecipePresenter.addInput(),
     updateAgentRecipeInput: (index: number, field: LineDraftField, value: string) =>
       agentRecipePresenter.updateInput(index, field, value),
+    removeAgentRecipeInput: (index: number) => agentRecipePresenter.removeInput(index),
     addAgentRecipeOutput: () => agentRecipePresenter.addOutput(),
     updateAgentRecipeOutput: (index: number, field: LineDraftField, value: string) =>
       agentRecipePresenter.updateOutput(index, field, value),
+    removeAgentRecipeOutput: (index: number) => agentRecipePresenter.removeOutput(index),
     submitAgentRecipe: () => agentRecipePresenter.submit(),
     startEditAgentRecipe: (recipe: Parameters<AgentRecipePresenter['startEdit']>[0]) =>
       agentRecipePresenter.startEdit(recipe),

@@ -20,6 +20,7 @@ export type RecipeDraft = {
 }
 
 export type RecipeError =
+  | { code: 'EMPTY_NAME' }
   | { code: 'NO_INPUTS' }
   | { code: 'NO_OUTPUTS' }
   | { code: 'INVALID_QUANTITY'; goodName: string }
@@ -73,8 +74,16 @@ function validatePositiveQuantities(lines: DraftLine[], errors: RecipeError[]): 
   }
 }
 
-export function validateRecipe(inputs: DraftLine[], outputs: DraftLine[]): RecipeError[] {
+export function validateRecipe(
+  name: string,
+  inputs: DraftLine[],
+  outputs: DraftLine[],
+): RecipeError[] {
   const errors: RecipeError[] = []
+
+  if (name.trim() === '') {
+    errors.push({ code: 'EMPTY_NAME' })
+  }
 
   validateRequiredLines(inputs, { code: 'NO_INPUTS' }, errors)
   validateRequiredLines(outputs, { code: 'NO_OUTPUTS' }, errors)

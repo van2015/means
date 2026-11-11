@@ -529,6 +529,85 @@ describe('DesignMode', () => {
     expect(agentCatalog.queryByText('Pan invalido')).not.toBeInTheDocument()
   })
 
+  it('removes an input line from an agent-specific recipe form', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
+
+    await user.type(agentRecipeNameInput(), 'Horneado')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '1')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(2), 'Huevos')
+    await user.type(agentRecipeInputQuantity(2), '2')
+
+    await user.click(
+      screen.getByRole('button', { name: /eliminar insumo de receta del agente 2/i }),
+    )
+
+    expect(
+      screen.queryByLabelText(/nombre del insumo de receta del agente 2/i),
+    ).not.toBeInTheDocument()
+    expect(agentRecipeInputGoodName(1)).toHaveValue('Harina')
+
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
+
+    const after = stores.agentStore.findByName('Panadero')
+    expect(after.ok).toBe(true)
+    if (!after.ok) return
+    expect(after.agent.recipes).toHaveLength(1)
+    expect(after.agent.recipes[0].inputs).toHaveLength(1)
+    expect(after.agent.recipes[0].inputs[0].quantity).toBe(1)
+  })
+
+  it('removes an output line from an agent-specific recipe form', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRecipesButton(agentCatalog))
+
+    await user.type(agentRecipeNameInput(), 'Horneado')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '1')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(2), 'Tortilla')
+    await user.type(agentRecipeOutputQuantity(2), '1')
+
+    await user.click(
+      screen.getByRole('button', { name: /eliminar producto de receta del agente 2/i }),
+    )
+
+    expect(
+      screen.queryByLabelText(/nombre del producto de receta del agente 2/i),
+    ).not.toBeInTheDocument()
+    expect(agentRecipeOutputGoodName(1)).toHaveValue('Pan')
+
+    await user.click(saveAgentRecipeButton())
+
+    const after = stores.agentStore.findByName('Panadero')
+    expect(after.ok).toBe(true)
+    if (!after.ok) return
+    expect(after.agent.recipes[0].outputs).toHaveLength(1)
+    expect(after.agent.recipes[0].outputs[0].quantity).toBe(1)
+  })
+
   it('does not show agent-specific recipes in the general recipe catalog', async () => {
     const user = userEvent.setup()
     render(<DesignMode stores={stores} />)

@@ -4,6 +4,7 @@ import type { AgentDraft, AgentError, AgentResult, Rule, RuleCondition, RuleErro
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
+import type { RecipeStore } from './recipeStore'
 
 export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: 'AGENT_NOT_FOUND' }
 
@@ -12,9 +13,11 @@ export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleErr
 export class AgentStore {
   private agents: Agent[] = []
   private goodStore: GoodStore
+  private recipeStore: RecipeStore
 
-  constructor(goodStore: GoodStore) {
+  constructor(goodStore: GoodStore, recipeStore: RecipeStore) {
     this.goodStore = goodStore
+    this.recipeStore = recipeStore
   }
 
   reset(): void {
@@ -70,14 +73,14 @@ export class AgentStore {
   }
 
   addRecipe(agentId: string, draft: RecipeDraft): RecipeResult {
-    const errors = this.validateRecipeDraft(draft)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
+    }
+
+    const errors = this.validateRecipeDraft(draft, agentResult.agent)
+    if (errors.length > 0) {
+      return { ok: false, errors }
     }
 
     const recipe = this.buildRecipe(generateId(), draft)
@@ -87,11 +90,6 @@ export class AgentStore {
   }
 
   updateRecipe(agentId: string, recipeId: string, draft: RecipeDraft): RecipeResult {
-    const errors = this.validateRecipeDraft(draft)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
@@ -100,6 +98,11 @@ export class AgentStore {
     const index = agentResult.agent.recipes.findIndex((recipe) => recipe.id === recipeId)
     if (index === -1) {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
+    }
+
+    const errors = this.validateRecipeDraft(draft, agentResult.agent, recipeId)
+    if (errors.length > 0) {
+      return { ok: false, errors }
     }
 
     const recipe = this.buildRecipe(recipeId, draft)
@@ -123,14 +126,14 @@ export class AgentStore {
     condition: RuleCondition,
     priority: number,
   ): RuleResult {
-    const errors = validateRule(recipeRef.recipeId, condition)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
+    }
+
+    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition)
+    if (errors.length > 0) {
+      return { ok: false, errors }
     }
 
     const rule: Rule = {
@@ -151,11 +154,6 @@ export class AgentStore {
     condition: RuleCondition,
     priority: number,
   ): RuleResult {
-    const errors = validateRule(recipeRef.recipeId, condition)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
@@ -164,6 +162,11 @@ export class AgentStore {
     const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
     if (index === -1) {
       return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
+    }
+
+    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition)
+    if (errors.length > 0) {
+      return { ok: false, errors }
     }
 
     const rule: Rule = {
@@ -195,6 +198,29 @@ export class AgentStore {
     return { ok: true, rule: agentResult.agent.rules[index] }
   }
 
+  private validateRuleDraft(
+    agent: Agent,
+    recipeRef: Rule['recipeRef'],
+    condition: RuleCondition,
+  ): RuleError[] {
+    const errors = validateRule(recipeRef.recipeId, condition)
+
+    if (recipeRef.recipeId !== '' && !this.ruleRecipeExists(agent, recipeRef)) {
+      errors.push({ code: 'RECIPE_NOT_FOUND' })
+    }
+    if (condition.goodId !== '' && !this.goodStore.get(condition.goodId).ok) {
+      errors.push({ code: 'UNKNOWN_CONDITION_GOOD' })
+    }
+    return errors
+  }
+
+  private ruleRecipeExists(agent: Agent, recipeRef: Rule['recipeRef']): boolean {
+    if (recipeRef.source === 'agent') {
+      return agent.recipes.some((recipe) => recipe.id === recipeRef.recipeId)
+    }
+    return this.recipeStore.all().some((recipe) => recipe.id === recipeRef.recipeId)
+  }
+
   private validateDraft(draft: AgentDraft): AgentError[] {
     const errors = validateAgent(draft.name, draft.inventory)
     for (const line of draft.inventory) {
@@ -210,13 +236,22 @@ export class AgentStore {
     return this.agents.some((agent) => agent.name === name && agent.id !== excludeId)
   }
 
-  private validateRecipeDraft(draft: RecipeDraft): RecipeError[] {
-    const errors = validateRecipe(draft.inputs, draft.outputs)
+  private validateRecipeDraft(
+    draft: RecipeDraft,
+    agent: Agent,
+    excludeRecipeId?: string,
+  ): RecipeError[] {
+    const errors = validateRecipe(draft.name, draft.inputs, draft.outputs)
     for (const line of [...draft.inputs, ...draft.outputs]) {
       const result = this.goodStore.require(line.goodName)
       if (!result.ok) {
         errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
       }
+    }
+    if (
+      agent.recipes.some((recipe) => recipe.name === draft.name && recipe.id !== excludeRecipeId)
+    ) {
+      errors.push({ code: 'RECIPE_NAME_EXISTS' })
     }
     return errors
   }

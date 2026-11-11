@@ -2,7 +2,7 @@ import type { AgentStore } from '@/domain/agentStore'
 import type { Good, GoodStore } from '@/domain/goodStore'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from '@/domain/recipeStore'
 import { Presenter } from './presenter'
-import { createLineDraft, type LineDraft, type LineDraftField } from './lineDraft'
+import { createLineDraft, removeLineAt, type LineDraft, type LineDraftField } from './lineDraft'
 
 export class AgentRecipePresenter extends Presenter {
   private agentStore: AgentStore
@@ -61,6 +61,12 @@ export class AgentRecipePresenter extends Presenter {
     this.notify()
   }
 
+  removeInput(index: number): void {
+    this.inputsValue = removeLineAt(this.inputsValue, index)
+    this.errorsValue = []
+    this.notify()
+  }
+
   addOutput(): void {
     this.outputsValue = [...this.outputsValue, createLineDraft()]
     this.notify()
@@ -70,6 +76,12 @@ export class AgentRecipePresenter extends Presenter {
     const next = [...this.outputsValue]
     next[index][field] = value
     this.outputsValue = next
+    this.notify()
+  }
+
+  removeOutput(index: number): void {
+    this.outputsValue = removeLineAt(this.outputsValue, index)
+    this.errorsValue = []
     this.notify()
   }
 

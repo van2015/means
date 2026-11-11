@@ -103,6 +103,21 @@ describe('RecipeStore', () => {
     }
     expect(store.count()).toBe(0)
   })
+  it('rejects a recipe with an empty name', () => {
+    goodStore.create('Harina')
+    goodStore.create('Pan')
+
+    const result = store.create(
+      RecipeBuilder.aRecipe().named('   ').withInput('Harina', 2).withOutput('Pan', 1).build(),
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.errors).toEqual([{ code: 'EMPTY_NAME' }])
+    }
+    expect(store.count()).toBe(0)
+  })
+
   it('rejects duplicate recipe names', () => {
     goodStore.create('Harina')
     goodStore.create('Pan')

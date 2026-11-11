@@ -25,6 +25,8 @@ export function errorMessage(error: ValidationError): string {
       return 'Se requiere una receta'
     case 'NO_CONDITION_GOOD':
       return 'Se requiere un bien para la condición'
+    case 'UNKNOWN_CONDITION_GOOD':
+      return 'El bien de la condición no está registrado'
     case 'INVALID_CONDITION_QUANTITY':
       return 'La cantidad de la condición debe ser mayor que cero'
     case 'AGENT_NOT_FOUND':
