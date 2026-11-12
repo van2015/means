@@ -1,5 +1,6 @@
 import type { Agent, AgentError, AgentResult } from '@/domain/agent'
 import type { AgentStore } from '@/domain/agentStore'
+import type { Recipe } from '@/domain/recipe'
 import { Presenter } from './presenter'
 import { createLineDraft, removeLineAt, type LineDraft, type LineDraftField } from './lineDraft'
 
@@ -38,6 +39,16 @@ export class AgentPresenter extends Presenter {
 
   get selectedAgentView(): 'recipes' | 'rules' | null {
     return this.selectedAgentViewValue
+  }
+
+  /**
+   * Own recipes of the selected agent: callers (the rule recipe picker) ask
+   * for them instead of searching the agent list themselves.
+   */
+  get selectedAgentRecipes(): Recipe[] {
+    if (this.selectedAgentIdValue === null) return []
+    const result = this.agentStore.findById(this.selectedAgentIdValue)
+    return result.ok ? result.agent.recipes : []
   }
 
   setName(name: string): void {

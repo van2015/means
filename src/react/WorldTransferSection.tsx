@@ -33,6 +33,51 @@ function summaryText(summary: ImportSummary): string {
   return skipped > 0 ? `${base} y se omitieron ${skipped} por ya existir.` : `${base}.`
 }
 
+type CheckableItem = { id: string; name: string }
+
+type TransferChecklistProps<T extends CheckableItem> = {
+  legend: string
+  emptyMessage: string
+  ariaLabel: string
+  items: T[]
+  selectedIds: string[]
+  onToggle: (id: string) => void
+}
+
+/** One selectable catalog (goods, recipes or agents) of the export section. */
+function TransferChecklist<T extends CheckableItem>({
+  legend,
+  emptyMessage,
+  ariaLabel,
+  items,
+  selectedIds,
+  onToggle,
+}: TransferChecklistProps<T>) {
+  return (
+    <fieldset className="line-form">
+      <legend>{legend}</legend>
+      {items.length === 0 ? (
+        <p>{emptyMessage}</p>
+      ) : (
+        <ul aria-label={ariaLabel}>
+          {items.map((item) => (
+            <li key={item.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(item.id)}
+                  onChange={() => onToggle(item.id)}
+                />
+                {item.name}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
+  )
+}
+
 export function WorldTransferSection({
   goods,
   recipes,
@@ -75,69 +120,30 @@ export function WorldTransferSection({
         La exportación incluye las dependencias de lo seleccionado (bienes que usan las recetas,
         recetas que usan las reglas de los agentes, etc.).
       </p>
-      <fieldset className="line-form">
-        <legend>Bienes y servicios</legend>
-        {goods.length === 0 ? (
-          <p>No hay bienes registrados.</p>
-        ) : (
-          <ul aria-label="Bienes exportables">
-            {goods.map((good) => (
-              <li key={good.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={selectedGoods.includes(good.id)}
-                    onChange={() => onToggleGood(good.id)}
-                  />
-                  {good.name}
-                </label>
-              </li>
-            ))}
-          </ul>
-        )}
-      </fieldset>
-      <fieldset className="line-form">
-        <legend>Recetas</legend>
-        {recipes.length === 0 ? (
-          <p>No hay recetas en el catálogo.</p>
-        ) : (
-          <ul aria-label="Recetas exportables">
-            {recipes.map((recipe) => (
-              <li key={recipe.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={selectedRecipes.includes(recipe.id)}
-                    onChange={() => onToggleRecipe(recipe.id)}
-                  />
-                  {recipe.name}
-                </label>
-              </li>
-            ))}
-          </ul>
-        )}
-      </fieldset>
-      <fieldset className="line-form">
-        <legend>Agentes (con inventario, recetas propias y reglas)</legend>
-        {agents.length === 0 ? (
-          <p>No hay agentes creados.</p>
-        ) : (
-          <ul aria-label="Agentes exportables">
-            {agents.map((agent) => (
-              <li key={agent.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={selectedAgents.includes(agent.id)}
-                    onChange={() => onToggleAgent(agent.id)}
-                  />
-                  {agent.name}
-                </label>
-              </li>
-            ))}
-          </ul>
-        )}
-      </fieldset>
+      <TransferChecklist
+        legend="Bienes y servicios"
+        emptyMessage="No hay bienes registrados."
+        ariaLabel="Bienes exportables"
+        items={goods}
+        selectedIds={selectedGoods}
+        onToggle={onToggleGood}
+      />
+      <TransferChecklist
+        legend="Recetas"
+        emptyMessage="No hay recetas en el catálogo."
+        ariaLabel="Recetas exportables"
+        items={recipes}
+        selectedIds={selectedRecipes}
+        onToggle={onToggleRecipe}
+      />
+      <TransferChecklist
+        legend="Agentes (con inventario, recetas propias y reglas)"
+        emptyMessage="No hay agentes creados."
+        ariaLabel="Agentes exportables"
+        items={agents}
+        selectedIds={selectedAgents}
+        onToggle={onToggleAgent}
+      />
       <button type="button" disabled={!canExport} onClick={handleExport}>
         Exportar selección ({selectedCount})
       </button>

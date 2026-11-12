@@ -1,7 +1,7 @@
 import type { Agent, Rule } from '@/domain/agentStore'
 import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
-import { goodName, operatorLabel, recipeName } from './catalogHelpers'
+import { goodName, operatorLabel, recipeName } from '@/presentation/catalogHelpers'
 
 type AgentCatalogProps = {
   agents: Agent[]

@@ -5,6 +5,7 @@ import type {
   AgentError,
   AgentResult,
   InventoryLine,
+  ProductionError,
   ProductionResult,
   Rule,
   RuleCondition,
@@ -17,6 +18,8 @@ import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
 
 export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: 'AGENT_NOT_FOUND' }
+
+type UnknownGoodError = { code: 'UNKNOWN_GOOD'; goodName: string }
 
 export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
 
@@ -148,14 +151,8 @@ export class AgentStore {
       return { ok: false, errors }
     }
 
-    const rule: Rule = {
-      id: generateId(),
-      recipeRef,
-      condition,
-      priority,
-    }
-    const updatedRules = [...agentResult.agent.rules, rule].sort((a, b) => a.priority - b.priority)
-    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    const rule: Rule = { id: generateId(), recipeRef, condition, priority }
+    this.replaceRules(agentResult.agent, [...agentResult.agent.rules, rule])
     return { ok: true, rule }
   }
 
@@ -166,77 +163,62 @@ export class AgentStore {
     condition: RuleCondition,
     priority: number,
   ): RuleResult {
-    const agentResult = this.findById(agentId)
-    if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
-    }
+    const found = this.requireRule(agentId, ruleId)
+    if (!found.ok) return { ok: false, errors: [found.error] }
 
-    const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
-    if (index === -1) {
-      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
-    }
-
-    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition, priority)
+    const errors = this.validateRuleDraft(found.agent, recipeRef, condition, priority)
     if (errors.length > 0) {
       return { ok: false, errors }
     }
 
-    const rule: Rule = {
-      id: ruleId,
-      recipeRef,
-      condition,
-      priority,
-    }
-    const updatedRules = [...agentResult.agent.rules]
-    updatedRules[index] = rule
-    updatedRules.sort((a, b) => a.priority - b.priority)
-    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    const rule: Rule = { id: ruleId, recipeRef, condition, priority }
+    const updatedRules = [...found.agent.rules]
+    updatedRules[found.index] = rule
+    this.replaceRules(found.agent, updatedRules)
     return { ok: true, rule }
   }
 
   updateRulePriority(agentId: string, ruleId: string, priority: number): RuleResult {
-    const agentResult = this.findById(agentId)
-    if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
-    }
-
-    const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
-    if (index === -1) {
-      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
-    }
-
+    const found = this.requireRule(agentId, ruleId)
+    if (!found.ok) return { ok: false, errors: [found.error] }
     if (!Number.isFinite(priority)) {
       return { ok: false, errors: [{ code: 'INVALID_PRIORITY' }] }
     }
 
-    const previous = agentResult.agent.rules[index]
-    const rule: Rule = {
-      id: previous.id,
-      recipeRef: previous.recipeRef,
-      condition: previous.condition,
-      priority,
-    }
-    const updatedRules = [...agentResult.agent.rules]
-    updatedRules[index] = rule
-    updatedRules.sort((a, b) => a.priority - b.priority)
-    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    const rule: Rule = { ...found.rule, priority }
+    const updatedRules = [...found.agent.rules]
+    updatedRules[found.index] = rule
+    this.replaceRules(found.agent, updatedRules)
     return { ok: true, rule }
   }
 
   deleteRule(agentId: string, ruleId: string): RuleResult {
+    const found = this.requireRule(agentId, ruleId)
+    if (!found.ok) return { ok: false, errors: [found.error] }
+
+    const updatedRules = found.agent.rules.filter((rule) => rule.id !== ruleId)
+    this.replaceAgent(found.agent, found.agent.recipes, updatedRules)
+    return { ok: true, rule: found.rule }
+  }
+
+  /** Resolves an agent and one of its rules, or the reason why they are missing. */
+  private requireRule(
+    agentId: string,
+    ruleId: string,
+  ): { ok: true; agent: Agent; index: number; rule: Rule } | { ok: false; error: RuleError } {
     const agentResult = this.findById(agentId)
-    if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
-    }
+    if (!agentResult.ok) return { ok: false, error: { code: 'AGENT_NOT_FOUND' } }
 
     const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
-    if (index === -1) {
-      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
-    }
+    if (index === -1) return { ok: false, error: { code: 'RULE_NOT_FOUND' } }
 
-    const updatedRules = agentResult.agent.rules.filter((rule) => rule.id !== ruleId)
-    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
-    return { ok: true, rule: agentResult.agent.rules[index] }
+    return { ok: true, agent: agentResult.agent, index, rule: agentResult.agent.rules[index] }
+  }
+
+  /** Stores the given rules keeping them ordered by priority. */
+  private replaceRules(agent: Agent, rules: Rule[]): void {
+    const sorted = [...rules].sort((a, b) => a.priority - b.priority)
+    this.replaceAgent(agent, agent.recipes, sorted)
   }
 
   produce(agentId: string, recipeRef: Rule['recipeRef']): ProductionResult {
@@ -251,35 +233,47 @@ export class AgentStore {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
     }
 
-    // validate every input before touching the inventory
+    const insufficient = this.insufficientInput(agent, recipe)
+    if (insufficient) return { ok: false, errors: [insufficient] }
+
+    const updated = new Agent(
+      agent.id,
+      agent.name,
+      this.composeInventory(agent, recipe),
+      agent.recipes,
+      agent.rules,
+    )
+    const index = this.agents.findIndex((a) => a.id === agent.id)
+    if (index !== -1) this.agents[index] = updated
+    return { ok: true, agent: updated }
+  }
+
+  /** Checks every input before the inventory is touched. */
+  private insufficientInput(agent: Agent, recipe: Recipe): ProductionError | null {
     for (const line of recipe.inputs) {
       const available = agent.quantityOf(line.goodId)
       if (available < line.quantity) {
         const good = this.goodStore.get(line.goodId)
         return {
-          ok: false,
-          errors: [
-            {
-              code: 'INSUFFICIENT_GOOD',
-              goodName: good.ok ? good.good.name : '',
-              required: line.quantity,
-              available,
-            },
-          ],
+          code: 'INSUFFICIENT_GOOD',
+          goodName: good.ok ? good.good.name : '',
+          required: line.quantity,
+          available,
         }
       }
     }
+    return null
+  }
 
+  /** Applies the recipe: consumes inputs, adds outputs, drops emptied goods. */
+  private composeInventory(agent: Agent, recipe: Recipe): InventoryLine[] {
     const quantities = new Map<string, number>()
-    for (const line of agent.inventory) {
-      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) + line.quantity)
-    }
-    for (const line of recipe.inputs) {
-      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) - line.quantity)
-    }
-    for (const line of recipe.outputs) {
-      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) + line.quantity)
-    }
+    const bump = (goodId: string, delta: number) =>
+      quantities.set(goodId, (quantities.get(goodId) ?? 0) + delta)
+
+    for (const line of agent.inventory) bump(line.goodId, line.quantity)
+    for (const line of recipe.inputs) bump(line.goodId, -line.quantity)
+    for (const line of recipe.outputs) bump(line.goodId, line.quantity)
 
     // keep the first-appearance order of existing goods, then append new ones
     const order: string[] = []
@@ -290,14 +284,9 @@ export class AgentStore {
       if (!order.includes(line.goodId)) order.push(line.goodId)
     }
 
-    const inventory: InventoryLine[] = order
+    return order
       .map((goodId) => ({ goodId, quantity: quantities.get(goodId) ?? 0 }))
       .filter((line) => line.quantity > 0)
-
-    const updated = new Agent(agent.id, agent.name, inventory, agent.recipes, agent.rules)
-    const index = this.agents.findIndex((a) => a.id === agent.id)
-    if (index !== -1) this.agents[index] = updated
-    return { ok: true, agent: updated }
   }
 
   runAutomaticRules(excludeAgentId: string | null): AutomaticProduction[] {
@@ -350,14 +339,10 @@ export class AgentStore {
   }
 
   private validateDraft(draft: AgentDraft): AgentError[] {
-    const errors = validateAgent(draft.name, draft.inventory)
-    for (const line of draft.inventory) {
-      const result = this.goodStore.require(line.goodName)
-      if (!result.ok) {
-        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
-      }
-    }
-    return errors
+    return [
+      ...validateAgent(draft.name, draft.inventory),
+      ...this.unknownGoodErrors(draft.inventory),
+    ]
   }
 
   private nameIsTaken(name: string, excludeId?: string): boolean {
@@ -369,17 +354,24 @@ export class AgentStore {
     agent: Agent,
     excludeRecipeId?: string,
   ): RecipeError[] {
-    const errors = validateRecipe(draft.name, draft.inputs, draft.outputs)
-    for (const line of [...draft.inputs, ...draft.outputs]) {
-      const result = this.goodStore.require(line.goodName)
-      if (!result.ok) {
-        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
-      }
-    }
+    const errors: RecipeError[] = [
+      ...validateRecipe(draft.name, draft.inputs, draft.outputs),
+      ...this.unknownGoodErrors([...draft.inputs, ...draft.outputs]),
+    ]
     if (
       agent.recipes.some((recipe) => recipe.name === draft.name && recipe.id !== excludeRecipeId)
     ) {
       errors.push({ code: 'RECIPE_NAME_EXISTS' })
+    }
+    return errors
+  }
+
+  /** Reports every line whose good is not registered in the good store. */
+  private unknownGoodErrors(lines: { goodName: string }[]): UnknownGoodError[] {
+    const errors: UnknownGoodError[] = []
+    for (const line of lines) {
+      const result = this.goodStore.require(line.goodName)
+      if (!result.ok) errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
     }
     return errors
   }

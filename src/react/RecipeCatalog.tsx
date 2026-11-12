@@ -1,6 +1,6 @@
 import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
-import { goodName } from './catalogHelpers'
+import { goodName } from '@/presentation/catalogHelpers'
 
 type RecipeCatalogProps = {
   recipes: Recipe[]

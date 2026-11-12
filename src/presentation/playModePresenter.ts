@@ -4,6 +4,7 @@ import type { Good, GoodStore } from '@/domain/goodStore'
 import type { PossessionStore } from '@/domain/possessionStore'
 import type { Recipe, RecipeStore } from '@/domain/recipeStore'
 import { errorMessage } from '@/i18n/errors'
+import { goodName as findGoodName, recipeName as findRecipeName } from './catalogHelpers'
 import { Presenter } from './presenter'
 
 export class PlayModePresenter extends Presenter {
@@ -51,9 +52,24 @@ export class PlayModePresenter extends Presenter {
     return this.errorValue
   }
 
+  /** Display name for a good id, resolved from the store. */
+  goodName(goodId: string): string {
+    return findGoodName(this.goodStore.all(), goodId)
+  }
+
+  /**
+   * Display name of a recipe referenced by a rule. A rule points either at the
+   * catalog or at the possessed agent's own recipes, so resolving the source
+   * is domain knowledge that must not live in the view.
+   */
+  recipeLabel(recipeRef: RuleRecipeRef): string {
+    const agentRecipes = this.possessionStore.possessed()?.recipes ?? []
+    return findRecipeName(recipeRef, this.recipeStore.all(), agentRecipes)
+  }
+
   possess(agentId: string): void {
     const result = this.possessionStore.possess(agentId)
-    this.errorValue = result.ok ? null : 'Agente no encontrado'
+    this.errorValue = result.ok ? null : errorMessage({ code: result.error })
     this.notify()
   }
 

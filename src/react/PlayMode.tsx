@@ -1,13 +1,13 @@
-import type { Good } from '@/domain/goodStore'
-import type { Recipe } from '@/domain/recipeStore'
+import type { Agent } from '@/domain/agent'
 import type { Stores } from '@/domain/stores'
 import { usePlayMode } from '@/presentation/usePlayMode'
-import { goodName, operatorLabel, recipeName } from './catalogHelpers'
+import { PossessedAgentPanel } from './PossessedAgentPanel'
 
 type PlayModeProps = {
   stores: Stores
 }
 
+/** Composition root of play mode: possession first, then the possessed agent. */
 export function PlayMode({ stores }: PlayModeProps) {
   const play = usePlayMode(stores)
   const possessed = play.possessedAgent
@@ -15,159 +15,75 @@ export function PlayMode({ stores }: PlayModeProps) {
   return (
     <div>
       <h2>Modo juego</h2>
-      <section>
-        <h3>Agentes disponibles</h3>
-        {play.agents.length === 0 ? (
-          <p>No hay agentes disponibles. Crea agentes en el modo diseño.</p>
-        ) : (
-          <ul aria-label="Agentes disponibles">
-            {play.agents.map((agent) => (
-              <li key={agent.id}>
-                {agent.name}
-                {play.possessedAgentId === agent.id ? (
-                  <span> Poseído</span>
-                ) : (
-                  <button type="button" onClick={() => play.possess(agent.id)}>
-                    Poseer
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <p>{possessed ? `Poseído: ${possessed.name}` : 'No posees a ningún agente'}</p>
-        {possessed && (
-          <button type="button" onClick={play.release}>
-            Dejar de poseer
-          </button>
-        )}
-        {play.error && <p role="alert">{play.error}</p>}
-      </section>
+      <PossessionSection
+        agents={play.agents}
+        possessedAgentId={play.possessedAgentId}
+        possessed={possessed}
+        error={play.error}
+        onPossess={play.possess}
+        onRelease={play.release}
+      />
       {possessed && (
-        <section>
-          <h3>Inventario de {possessed.name}</h3>
-          {possessed.inventory.length === 0 ? (
-            <p>El inventario está vacío.</p>
-          ) : (
-            <ul aria-label="Inventario del agente poseído">
-              {possessed.inventory.map((line, index) => (
-                <li key={`${line.goodId}-${index}`}>
-                  {goodName(play.goods, line.goodId)}: {line.quantity}
-                </li>
-              ))}
-            </ul>
-          )}
-          <h3>Recetas de {possessed.name}</h3>
-          {possessed.recipes.length === 0 ? (
-            <p>Este agente no tiene recetas propias.</p>
-          ) : (
-            <ul aria-label="Recetas del agente poseído">
-              {possessed.recipes.map((recipe) => (
-                <li key={recipe.id}>
-                  {recipe.name}
-                  <ul>
-                    {recipe.inputs.map((line, index) => (
-                      <li key={`${line.goodId}-${index}`}>
-                        Insumo: {goodName(play.goods, line.goodId)}: {line.quantity}
-                      </li>
-                    ))}
-                    {recipe.outputs.map((line, index) => (
-                      <li key={`${line.goodId}-${index}`}>
-                        Producto: {goodName(play.goods, line.goodId)}: {line.quantity}
-                      </li>
-                    ))}
-                  </ul>
-                </li>
-              ))}
-            </ul>
-          )}
-          <h3>Reglas de {possessed.name}</h3>
-          {possessed.rules.length === 0 ? (
-            <p>Este agente no tiene reglas automáticas.</p>
-          ) : (
-            <ul aria-label="Reglas del agente poseído">
-              {possessed.rules.map((rule, index) => (
-                <li key={rule.id}>
-                  {recipeName(rule.recipeRef, play.catalogRecipes, possessed.recipes)} —{' '}
-                  {operatorLabel(rule.condition.operator)} {rule.condition.quantity}{' '}
-                  {goodName(play.goods, rule.condition.goodId)} (prioridad: {rule.priority})
-                  <label>
-                    Prioridad de la regla {index + 1}
-                    <input
-                      type="number"
-                      value={play.priorityDraft(rule.id, rule.priority)}
-                      onChange={(event) => play.setPriorityDraft(rule.id, event.target.value)}
-                    />
-                  </label>
-                  <button type="button" onClick={() => play.submitPriority(rule.id)}>
-                    Guardar prioridad
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          <h3>Producir</h3>
-          <h4>Catálogo general</h4>
-          {play.catalogRecipes.length === 0 ? (
-            <p>No hay recetas en el catálogo.</p>
-          ) : (
-            <ul aria-label="Recetas del catálogo para producir">
-              {play.catalogRecipes.map((recipe) => (
-                <ProduceRow
-                  key={recipe.id}
-                  recipe={recipe}
-                  goods={play.goods}
-                  onProduce={() => play.produce({ source: 'catalog', recipeId: recipe.id })}
-                />
-              ))}
-            </ul>
-          )}
-          <h4>Recetas propias</h4>
-          {possessed.recipes.length === 0 ? (
-            <p>No hay recetas propias para producir.</p>
-          ) : (
-            <ul aria-label="Recetas del agente para producir">
-              {possessed.recipes.map((recipe) => (
-                <ProduceRow
-                  key={recipe.id}
-                  recipe={recipe}
-                  goods={play.goods}
-                  onProduce={() => play.produce({ source: 'agent', recipeId: recipe.id })}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
+        <PossessedAgentPanel
+          agent={possessed}
+          catalogRecipes={play.catalogRecipes}
+          goodName={play.goodName}
+          recipeLabel={play.recipeLabel}
+          priorityDraft={play.priorityDraft}
+          onPriorityChange={play.setPriorityDraft}
+          onSubmitPriority={play.submitPriority}
+          onProduce={play.produce}
+        />
       )}
     </div>
   )
 }
 
-type ProduceRowProps = {
-  recipe: Recipe
-  goods: Good[]
-  onProduce: () => void
+type PossessionSectionProps = {
+  agents: Agent[]
+  possessedAgentId: string | null
+  possessed: Agent | null
+  error: string | null
+  onPossess: (agentId: string) => void
+  onRelease: () => void
 }
 
-function ProduceRow({ recipe, goods, onProduce }: ProduceRowProps) {
+function PossessionSection({
+  agents,
+  possessedAgentId,
+  possessed,
+  error,
+  onPossess,
+  onRelease,
+}: PossessionSectionProps) {
   return (
-    <li>
-      {recipe.name}
-      <ul>
-        {recipe.inputs.map((line, index) => (
-          <li key={`${line.goodId}-${index}`}>
-            Insumo: {goodName(goods, line.goodId)}: {line.quantity}
-          </li>
-        ))}
-        {recipe.outputs.map((line, index) => (
-          <li key={`${line.goodId}-${index}`}>
-            Producto: {goodName(goods, line.goodId)}: {line.quantity}
-          </li>
-        ))}
-      </ul>
-      <button type="button" onClick={onProduce}>
-        Producir
-      </button>
-    </li>
+    <section>
+      <h3>Agentes disponibles</h3>
+      {agents.length === 0 ? (
+        <p>No hay agentes disponibles. Crea agentes en el modo diseño.</p>
+      ) : (
+        <ul aria-label="Agentes disponibles">
+          {agents.map((agent) => (
+            <li key={agent.id}>
+              {agent.name}
+              {possessedAgentId === agent.id ? (
+                <span> Poseído</span>
+              ) : (
+                <button type="button" onClick={() => onPossess(agent.id)}>
+                  Poseer
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p>{possessed ? `Poseído: ${possessed.name}` : 'No posees a ningún agente'}</p>
+      {possessed && (
+        <button type="button" onClick={onRelease}>
+          Dejar de poseer
+        </button>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </section>
   )
 }

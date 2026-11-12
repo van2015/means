@@ -1,150 +1,186 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { Rule, RuleRecipeRef } from '@/domain/agent'
 import type { Stores } from '@/domain/stores'
-import { saveWorld } from '@/persistence'
 import { AgentPresenter } from './agentPresenter'
 import { AgentRecipePresenter } from './agentRecipePresenter'
 import { AgentRulePresenter } from './agentRulePresenter'
 import { GoodPresenter } from './goodPresenter'
 import type { LineDraftField } from './lineDraft'
 import { RecipePresenter } from './recipePresenter'
+import { usePresenterSync } from './usePresenterSync'
 import { WorldTransferPresenter } from './worldTransferPresenter'
 
+type DesignPresenters = {
+  recipe: RecipePresenter
+  good: GoodPresenter
+  agent: AgentPresenter
+  agentRecipe: AgentRecipePresenter
+  agentRule: AgentRulePresenter
+  transfer: WorldTransferPresenter
+}
+
+function createPresenters(stores: Stores): DesignPresenters {
+  return {
+    recipe: new RecipePresenter(stores),
+    good: new GoodPresenter(stores),
+    agent: new AgentPresenter({ agentStore: stores.agentStore }),
+    agentRecipe: new AgentRecipePresenter(stores),
+    agentRule: new AgentRulePresenter(stores),
+    transfer: new WorldTransferPresenter(stores),
+  }
+}
+
+function recipeApi(p: RecipePresenter) {
+  return {
+    name: p.name,
+    inputs: p.inputs,
+    outputs: p.outputs,
+    recipes: p.recipes,
+    errors: p.errors,
+    setName: (name: string) => p.setName(name),
+    addInput: () => p.addInput(),
+    updateInput: (index: number, field: LineDraftField, value: string) =>
+      p.updateInput(index, field, value),
+    removeInput: (index: number) => p.removeInput(index),
+    addOutput: () => p.addOutput(),
+    updateOutput: (index: number, field: LineDraftField, value: string) =>
+      p.updateOutput(index, field, value),
+    removeOutput: (index: number) => p.removeOutput(index),
+    deleteRecipe: (id: string) => p.deleteRecipe(id),
+    startEdit: (recipe: Parameters<RecipePresenter['startEdit']>[0]) => p.startEdit(recipe),
+    submit: () => p.submit(),
+  }
+}
+
+function goodApi(p: GoodPresenter) {
+  return {
+    goodName: p.goodName,
+    goods: p.goods,
+    goodError: p.goodError,
+    setGoodName: (name: string) => p.setGoodName(name),
+    registerGood: () => p.registerGood(),
+  }
+}
+
+function agentApi(p: AgentPresenter) {
+  return {
+    agentName: p.name,
+    agentInventory: p.inventory,
+    agents: p.agents,
+    agentErrors: p.errors,
+    selectedAgentId: p.selectedAgentId,
+    selectedAgentView: p.selectedAgentView,
+    selectedAgentRecipes: p.selectedAgentRecipes,
+    setAgentName: (name: string) => p.setName(name),
+    addAgentInventoryLine: () => p.addInventoryLine(),
+    updateAgentInventoryLine: (index: number, field: LineDraftField, value: string) =>
+      p.updateInventoryLine(index, field, value),
+    removeAgentInventoryLine: (index: number) => p.removeInventoryLine(index),
+    submitAgent: () => p.submit(),
+  }
+}
+
+function agentRecipeApi(p: AgentRecipePresenter) {
+  return {
+    agentRecipeName: p.name,
+    agentRecipeInputs: p.inputs,
+    agentRecipeOutputs: p.outputs,
+    agentRecipeErrors: p.errors,
+    agentRecipeEditingId: p.editingId,
+    setAgentRecipeName: (name: string) => p.setName(name),
+    addAgentRecipeInput: () => p.addInput(),
+    updateAgentRecipeInput: (index: number, field: LineDraftField, value: string) =>
+      p.updateInput(index, field, value),
+    removeAgentRecipeInput: (index: number) => p.removeInput(index),
+    addAgentRecipeOutput: () => p.addOutput(),
+    updateAgentRecipeOutput: (index: number, field: LineDraftField, value: string) =>
+      p.updateOutput(index, field, value),
+    removeAgentRecipeOutput: (index: number) => p.removeOutput(index),
+    submitAgentRecipe: () => p.submit(),
+    startEditAgentRecipe: (recipe: Parameters<AgentRecipePresenter['startEdit']>[0]) =>
+      p.startEdit(recipe),
+    deleteAgentRecipe: (recipeId: string) => p.deleteRecipe(recipeId),
+  }
+}
+
+function agentRuleApi(p: AgentRulePresenter) {
+  return {
+    agentRuleRecipeRef: p.recipeRef,
+    agentRuleConditionGoodId: p.conditionGoodId,
+    agentRuleConditionQuantity: p.conditionQuantity,
+    agentRuleConditionOperator: p.conditionOperator,
+    agentRulePriority: p.priority,
+    agentRuleErrors: p.errors,
+    agentRuleEditingId: p.editingId,
+    catalogRecipes: p.catalogRecipes,
+    setAgentRuleRecipeRef: (ref: RuleRecipeRef) => p.setRecipeRef(ref),
+    setAgentRuleConditionGoodId: (goodId: string) => p.setConditionGoodId(goodId),
+    setAgentRuleConditionQuantity: (value: string) => p.setConditionQuantity(value),
+    setAgentRuleConditionOperator: (operator: 'AT_LEAST' | 'LESS_THAN') =>
+      p.setConditionOperator(operator),
+    setAgentRulePriority: (value: string) => p.setPriority(value),
+    submitAgentRule: () => p.submit(),
+    startEditAgentRule: (rule: Rule) => p.startEdit(rule),
+    deleteAgentRule: (ruleId: string) => p.deleteRule(ruleId),
+  }
+}
+
+function transferApi(p: WorldTransferPresenter) {
+  return {
+    transferSelectedGoods: p.selectedGoods,
+    transferSelectedRecipes: p.selectedRecipes,
+    transferSelectedAgents: p.selectedAgents,
+    transferSelectedCount: p.selectedCount,
+    transferCanExport: p.canExport,
+    transferImportErrors: p.importErrors,
+    transferImportSummary: p.importSummary,
+    toggleTransferGood: (id: string) => p.toggleGood(id),
+    toggleTransferRecipe: (id: string) => p.toggleRecipe(id),
+    toggleTransferAgent: (id: string) => p.toggleAgent(id),
+    exportTransferJson: (): string | null => p.exportJson(),
+    importTransferJson: (json: string) => p.importJson(json),
+    clearTransferResult: () => p.clearResult(),
+  }
+}
+
+/**
+ * Composes the design-mode presenters into the flat API consumed by the UI.
+ * The API is grouped per feature: each builder owns one presenter, so adding a
+ * field only touches its group instead of a single 100+ line object literal.
+ */
 export function useDesignMode(stores: Stores) {
-  const [recipePresenter] = useState(() => new RecipePresenter(stores))
-  const [goodPresenter] = useState(() => new GoodPresenter(stores))
-  const [agentPresenter] = useState(() => new AgentPresenter({ agentStore: stores.agentStore }))
-  const [agentRecipePresenter] = useState(() => new AgentRecipePresenter(stores))
-  const [agentRulePresenter] = useState(() => new AgentRulePresenter(stores))
-  const [worldTransferPresenter] = useState(() => new WorldTransferPresenter(stores))
+  // Presenters are bound to the stores instance captured on the first render,
+  // so persistence must target that same instance: a caller that rebuilds its
+  // stores on later renders would otherwise save an empty world over the real one.
+  const [binding] = useState(() => ({ presenters: createPresenters(stores), stores }))
+  const { presenters } = binding
   const [, forceUpdate] = useState({})
+  const rerender = useCallback(() => forceUpdate({}), [])
+  const presenterList = useMemo(() => Object.values(presenters), [presenters])
 
-  useEffect(() => {
-    const presenters = [
-      recipePresenter,
-      goodPresenter,
-      agentPresenter,
-      agentRecipePresenter,
-      agentRulePresenter,
-      worldTransferPresenter,
-    ]
-    // every store mutation flows through a presenter notification, so this
-    // is the single choke point that keeps localStorage in sync
-    const unsubscribes = presenters.map((presenter) =>
-      presenter.subscribe(() => {
-        forceUpdate({})
-        saveWorld(stores)
-      }),
-    )
-    return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
-  }, [
-    recipePresenter,
-    goodPresenter,
-    agentPresenter,
-    agentRecipePresenter,
-    agentRulePresenter,
-    worldTransferPresenter,
-    stores,
-  ])
+  usePresenterSync(presenterList, binding.stores, rerender)
 
+  // selection is coordinated: only one of the agent forms may be active
   const selectAgent = (agentId: string) => {
-    agentPresenter.selectAgent(agentId)
-    agentRecipePresenter.setAgentId(agentId)
-    agentRulePresenter.setAgentId(null)
+    presenters.agent.selectAgent(agentId)
+    presenters.agentRecipe.setAgentId(agentId)
+    presenters.agentRule.setAgentId(null)
   }
 
   const selectAgentRules = (agentId: string) => {
-    agentPresenter.selectAgentRules(agentId)
-    agentRecipePresenter.setAgentId(null)
-    agentRulePresenter.setAgentId(agentId)
+    presenters.agent.selectAgentRules(agentId)
+    presenters.agentRecipe.setAgentId(null)
+    presenters.agentRule.setAgentId(agentId)
   }
 
   return {
-    name: recipePresenter.name,
-    inputs: recipePresenter.inputs,
-    outputs: recipePresenter.outputs,
-    recipes: recipePresenter.recipes,
-    errors: recipePresenter.errors,
-    goodName: goodPresenter.goodName,
-    goods: goodPresenter.goods,
-    goodError: goodPresenter.goodError,
-    agentName: agentPresenter.name,
-    agentInventory: agentPresenter.inventory,
-    agents: agentPresenter.agents,
-    agentErrors: agentPresenter.errors,
-    selectedAgentId: agentPresenter.selectedAgentId,
-    selectedAgentView: agentPresenter.selectedAgentView,
-    agentRecipeName: agentRecipePresenter.name,
-    agentRecipeInputs: agentRecipePresenter.inputs,
-    agentRecipeOutputs: agentRecipePresenter.outputs,
-    agentRecipeErrors: agentRecipePresenter.errors,
-    agentRecipeEditingId: agentRecipePresenter.editingId,
-    agentRuleRecipeRef: agentRulePresenter.recipeRef,
-    agentRuleConditionGoodId: agentRulePresenter.conditionGoodId,
-    agentRuleConditionQuantity: agentRulePresenter.conditionQuantity,
-    agentRuleConditionOperator: agentRulePresenter.conditionOperator,
-    agentRulePriority: agentRulePresenter.priority,
-    agentRuleErrors: agentRulePresenter.errors,
-    agentRuleEditingId: agentRulePresenter.editingId,
-    setName: (name: string) => recipePresenter.setName(name),
-    addInput: () => recipePresenter.addInput(),
-    updateInput: (index: number, field: LineDraftField, value: string) =>
-      recipePresenter.updateInput(index, field, value),
-    removeInput: (index: number) => recipePresenter.removeInput(index),
-    addOutput: () => recipePresenter.addOutput(),
-    updateOutput: (index: number, field: LineDraftField, value: string) =>
-      recipePresenter.updateOutput(index, field, value),
-    removeOutput: (index: number) => recipePresenter.removeOutput(index),
-    deleteRecipe: (id: string) => recipePresenter.deleteRecipe(id),
-    startEdit: (recipe: Parameters<RecipePresenter['startEdit']>[0]) =>
-      recipePresenter.startEdit(recipe),
-    submit: () => recipePresenter.submit(),
-    setGoodName: (name: string) => goodPresenter.setGoodName(name),
-    registerGood: () => goodPresenter.registerGood(),
-    setAgentName: (name: string) => agentPresenter.setName(name),
-    addAgentInventoryLine: () => agentPresenter.addInventoryLine(),
-    updateAgentInventoryLine: (index: number, field: LineDraftField, value: string) =>
-      agentPresenter.updateInventoryLine(index, field, value),
-    removeAgentInventoryLine: (index: number) => agentPresenter.removeInventoryLine(index),
-    submitAgent: () => agentPresenter.submit(),
+    ...recipeApi(presenters.recipe),
+    ...goodApi(presenters.good),
+    ...agentApi(presenters.agent),
+    ...agentRecipeApi(presenters.agentRecipe),
+    ...agentRuleApi(presenters.agentRule),
+    ...transferApi(presenters.transfer),
     selectAgent,
     selectAgentRules,
-    setAgentRecipeName: (name: string) => agentRecipePresenter.setName(name),
-    addAgentRecipeInput: () => agentRecipePresenter.addInput(),
-    updateAgentRecipeInput: (index: number, field: LineDraftField, value: string) =>
-      agentRecipePresenter.updateInput(index, field, value),
-    removeAgentRecipeInput: (index: number) => agentRecipePresenter.removeInput(index),
-    addAgentRecipeOutput: () => agentRecipePresenter.addOutput(),
-    updateAgentRecipeOutput: (index: number, field: LineDraftField, value: string) =>
-      agentRecipePresenter.updateOutput(index, field, value),
-    removeAgentRecipeOutput: (index: number) => agentRecipePresenter.removeOutput(index),
-    submitAgentRecipe: () => agentRecipePresenter.submit(),
-    startEditAgentRecipe: (recipe: Parameters<AgentRecipePresenter['startEdit']>[0]) =>
-      agentRecipePresenter.startEdit(recipe),
-    deleteAgentRecipe: (recipeId: string) => agentRecipePresenter.deleteRecipe(recipeId),
-    setAgentRuleRecipeRef: (ref: RuleRecipeRef) => agentRulePresenter.setRecipeRef(ref),
-    setAgentRuleConditionGoodId: (goodId: string) => agentRulePresenter.setConditionGoodId(goodId),
-    setAgentRuleConditionQuantity: (value: string) =>
-      agentRulePresenter.setConditionQuantity(value),
-    setAgentRuleConditionOperator: (operator: 'AT_LEAST' | 'LESS_THAN') =>
-      agentRulePresenter.setConditionOperator(operator),
-    setAgentRulePriority: (value: string) => agentRulePresenter.setPriority(value),
-    submitAgentRule: () => agentRulePresenter.submit(),
-    startEditAgentRule: (rule: Rule) => agentRulePresenter.startEdit(rule),
-    deleteAgentRule: (ruleId: string) => agentRulePresenter.deleteRule(ruleId),
-    catalogRecipes: agentRulePresenter.catalogRecipes,
-    transferSelectedGoods: worldTransferPresenter.selectedGoods,
-    transferSelectedRecipes: worldTransferPresenter.selectedRecipes,
-    transferSelectedAgents: worldTransferPresenter.selectedAgents,
-    transferSelectedCount: worldTransferPresenter.selectedCount,
-    transferCanExport: worldTransferPresenter.canExport,
-    transferImportErrors: worldTransferPresenter.importErrors,
-    transferImportSummary: worldTransferPresenter.importSummary,
-    toggleTransferGood: (id: string) => worldTransferPresenter.toggleGood(id),
-    toggleTransferRecipe: (id: string) => worldTransferPresenter.toggleRecipe(id),
-    toggleTransferAgent: (id: string) => worldTransferPresenter.toggleAgent(id),
-    exportTransferJson: (): string | null => worldTransferPresenter.exportJson(),
-    importTransferJson: (json: string) => worldTransferPresenter.importJson(json),
-    clearTransferResult: () => worldTransferPresenter.clearResult(),
   }
 }

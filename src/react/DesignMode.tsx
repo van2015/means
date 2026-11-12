@@ -1,122 +1,69 @@
 import { createStores, type Stores } from '@/domain/stores'
 import { useDesignMode } from '@/presentation/useDesignMode'
 import { AgentCatalog } from './AgentCatalog'
+import { AgentForm } from './AgentForm'
+import { AgentRecipeForm } from './AgentRecipeForm'
+import { AgentRuleForm } from './AgentRuleForm'
+import { GoodsSection } from './GoodsSection'
 import { RecipeCatalog } from './RecipeCatalog'
-import { RecipeLineForm } from './RecipeLineForm'
-import { ValidationErrors } from './ValidationErrors'
+import { RecipeForm } from './RecipeForm'
 import { WorldTransferSection } from './WorldTransferSection'
 
 type DesignModeProps = {
   stores?: Stores
 }
 
+/**
+ * Composition root of design mode: wires the flat design-mode API into one
+ * component per section. Sections own their markup; this file only routes
+ * state and callbacks.
+ */
 export function DesignMode({ stores = createStores() }: DesignModeProps) {
   const presenter = useDesignMode(stores)
+  const agentSelected = presenter.selectedAgentId !== null
 
   return (
     <div>
       <h2>Modo diseño</h2>
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault()
-          presenter.submit()
-        }}
-      >
-        <label>
-          Nombre
-          <input
-            value={presenter.name}
-            onChange={(event) => presenter.setName(event.target.value)}
-          />
-        </label>
-        <RecipeLineForm
-          legend="Entradas"
-          lineLabel="insumo"
-          addButtonLabel="entrada"
-          listId="goods-list-inputs"
-          lines={presenter.inputs}
-          goods={presenter.goods}
-          onAdd={presenter.addInput}
-          onUpdate={presenter.updateInput}
-          onRemove={presenter.removeInput}
-        />
-        <RecipeLineForm
-          legend="Salidas"
-          lineLabel="producto"
-          addButtonLabel="salida"
-          listId="goods-list-outputs"
-          lines={presenter.outputs}
-          goods={presenter.goods}
-          onAdd={presenter.addOutput}
-          onUpdate={presenter.updateOutput}
-          onRemove={presenter.removeOutput}
-        />
-        <button type="submit">Guardar receta</button>
-      </form>
-      <ValidationErrors errors={presenter.errors} />
+      <RecipeForm
+        name={presenter.name}
+        inputs={presenter.inputs}
+        outputs={presenter.outputs}
+        errors={presenter.errors}
+        goods={presenter.goods}
+        onNameChange={presenter.setName}
+        onAddInput={presenter.addInput}
+        onUpdateInput={presenter.updateInput}
+        onRemoveInput={presenter.removeInput}
+        onAddOutput={presenter.addOutput}
+        onUpdateOutput={presenter.updateOutput}
+        onRemoveOutput={presenter.removeOutput}
+        onSubmit={presenter.submit}
+      />
       <RecipeCatalog
         recipes={presenter.recipes}
         goods={presenter.goods}
         onEdit={presenter.startEdit}
         onDelete={presenter.deleteRecipe}
       />
-      <section>
-        <h3>Catálogo de bienes y servicios</h3>
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault()
-            presenter.registerGood()
-          }}
-        >
-          <label>
-            Bien o servicio
-            <input
-              value={presenter.goodName}
-              onChange={(event) => presenter.setGoodName(event.target.value)}
-            />
-          </label>
-          <button type="submit">Registrar bien o servicio</button>
-        </form>
-        {presenter.goodError && <p>{presenter.goodError}</p>}
-        <ul>
-          {presenter.goods.map((good) => (
-            <li key={good.id}>{good.name}</li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h3>Crear agente</h3>
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault()
-            presenter.submitAgent()
-          }}
-        >
-          <label>
-            Nombre del agente
-            <input
-              value={presenter.agentName}
-              onChange={(event) => presenter.setAgentName(event.target.value)}
-            />
-          </label>
-          <RecipeLineForm
-            legend="Inventario inicial"
-            lineLabel="bien"
-            addButtonLabel="línea de inventario"
-            listId="goods-list-agent"
-            lines={presenter.agentInventory}
-            goods={presenter.goods}
-            onAdd={presenter.addAgentInventoryLine}
-            onUpdate={presenter.updateAgentInventoryLine}
-            onRemove={presenter.removeAgentInventoryLine}
-          />
-          <button type="submit">Crear agente</button>
-        </form>
-        <ValidationErrors errors={presenter.agentErrors} />
-      </section>
+      <GoodsSection
+        goodName={presenter.goodName}
+        goods={presenter.goods}
+        error={presenter.goodError}
+        onNameChange={presenter.setGoodName}
+        onRegister={presenter.registerGood}
+      />
+      <AgentForm
+        name={presenter.agentName}
+        inventory={presenter.agentInventory}
+        errors={presenter.agentErrors}
+        goods={presenter.goods}
+        onNameChange={presenter.setAgentName}
+        onAddLine={presenter.addAgentInventoryLine}
+        onUpdateLine={presenter.updateAgentInventoryLine}
+        onRemoveLine={presenter.removeAgentInventoryLine}
+        onSubmit={presenter.submitAgent}
+      />
       <AgentCatalog
         agents={presenter.agents}
         goods={presenter.goods}
@@ -130,140 +77,41 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
         onEditRule={presenter.startEditAgentRule}
         onDeleteRule={presenter.deleteAgentRule}
       />
-      {presenter.selectedAgentId && presenter.selectedAgentView === 'recipes' && (
-        <section>
-          <h3>Receta propia del agente</h3>
-          <form
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault()
-              presenter.submitAgentRecipe()
-            }}
-          >
-            <label>
-              Nombre de la receta del agente
-              <input
-                value={presenter.agentRecipeName}
-                onChange={(event) => presenter.setAgentRecipeName(event.target.value)}
-              />
-            </label>
-            <RecipeLineForm
-              legend="Entradas"
-              lineLabel="insumo de receta del agente"
-              addButtonLabel="entrada de receta del agente"
-              listId="goods-list-agent-recipe-inputs"
-              lines={presenter.agentRecipeInputs}
-              goods={presenter.goods}
-              onAdd={presenter.addAgentRecipeInput}
-              onUpdate={presenter.updateAgentRecipeInput}
-              onRemove={presenter.removeAgentRecipeInput}
-            />
-            <RecipeLineForm
-              legend="Salidas"
-              lineLabel="producto de receta del agente"
-              addButtonLabel="salida de receta del agente"
-              listId="goods-list-agent-recipe-outputs"
-              lines={presenter.agentRecipeOutputs}
-              goods={presenter.goods}
-              onAdd={presenter.addAgentRecipeOutput}
-              onUpdate={presenter.updateAgentRecipeOutput}
-              onRemove={presenter.removeAgentRecipeOutput}
-            />
-            <button type="submit">Guardar receta del agente</button>
-          </form>
-          <ValidationErrors errors={presenter.agentRecipeErrors} />
-        </section>
+      {agentSelected && presenter.selectedAgentView === 'recipes' && (
+        <AgentRecipeForm
+          name={presenter.agentRecipeName}
+          inputs={presenter.agentRecipeInputs}
+          outputs={presenter.agentRecipeOutputs}
+          errors={presenter.agentRecipeErrors}
+          goods={presenter.goods}
+          onNameChange={presenter.setAgentRecipeName}
+          onAddInput={presenter.addAgentRecipeInput}
+          onUpdateInput={presenter.updateAgentRecipeInput}
+          onRemoveInput={presenter.removeAgentRecipeInput}
+          onAddOutput={presenter.addAgentRecipeOutput}
+          onUpdateOutput={presenter.updateAgentRecipeOutput}
+          onRemoveOutput={presenter.removeAgentRecipeOutput}
+          onSubmit={presenter.submitAgentRecipe}
+        />
       )}
-      {presenter.selectedAgentId && presenter.selectedAgentView === 'rules' && (
-        <section>
-          <h3>Regla automática del agente</h3>
-          <form
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault()
-              presenter.submitAgentRule()
-            }}
-          >
-            <label>
-              Receta de la regla
-              <select
-                value={`${presenter.agentRuleRecipeRef.source}:${presenter.agentRuleRecipeRef.recipeId}`}
-                onChange={(event) => {
-                  const [source, recipeId] = event.target.value.split(':') as [
-                    'catalog' | 'agent',
-                    string,
-                  ]
-                  presenter.setAgentRuleRecipeRef({ source, recipeId })
-                }}
-              >
-                <option value="">Seleccionar receta</option>
-                <optgroup label="Catálogo general">
-                  {presenter.catalogRecipes.map((recipe) => (
-                    <option key={recipe.id} value={`catalog:${recipe.id}`}>
-                      {recipe.name}
-                    </option>
-                  ))}
-                </optgroup>
-                <optgroup label="Recetas propias del agente">
-                  {presenter.agents
-                    .find((agent) => agent.id === presenter.selectedAgentId)
-                    ?.recipes.map((recipe) => (
-                      <option key={recipe.id} value={`agent:${recipe.id}`}>
-                        {recipe.name}
-                      </option>
-                    ))}
-                </optgroup>
-              </select>
-            </label>
-            <label>
-              Bien de la condición
-              <select
-                value={presenter.agentRuleConditionGoodId}
-                onChange={(event) => presenter.setAgentRuleConditionGoodId(event.target.value)}
-              >
-                <option value="">Seleccionar bien</option>
-                {presenter.goods.map((good) => (
-                  <option key={good.id} value={good.id}>
-                    {good.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Cantidad de la condición
-              <input
-                type="number"
-                min="1"
-                value={presenter.agentRuleConditionQuantity}
-                onChange={(event) => presenter.setAgentRuleConditionQuantity(event.target.value)}
-              />
-            </label>
-            <label>
-              Operador de la condición
-              <select
-                value={presenter.agentRuleConditionOperator}
-                onChange={(event) =>
-                  presenter.setAgentRuleConditionOperator(
-                    event.target.value as 'AT_LEAST' | 'LESS_THAN',
-                  )
-                }
-              >
-                <option value="AT_LEAST">al menos</option>
-                <option value="LESS_THAN">menos de</option>
-              </select>
-            </label>
-            <label>
-              Prioridad de la regla
-              <input
-                type="number"
-                value={presenter.agentRulePriority}
-                onChange={(event) => presenter.setAgentRulePriority(event.target.value)}
-              />
-            </label>
-            <button type="submit">Guardar regla</button>
-          </form>
-          <ValidationErrors errors={presenter.agentRuleErrors} />
-        </section>
+      {agentSelected && presenter.selectedAgentView === 'rules' && (
+        <AgentRuleForm
+          recipeRef={presenter.agentRuleRecipeRef}
+          conditionGoodId={presenter.agentRuleConditionGoodId}
+          conditionQuantity={presenter.agentRuleConditionQuantity}
+          conditionOperator={presenter.agentRuleConditionOperator}
+          priority={presenter.agentRulePriority}
+          errors={presenter.agentRuleErrors}
+          catalogRecipes={presenter.catalogRecipes}
+          ownRecipes={presenter.selectedAgentRecipes}
+          goods={presenter.goods}
+          onRecipeRefChange={presenter.setAgentRuleRecipeRef}
+          onConditionGoodIdChange={presenter.setAgentRuleConditionGoodId}
+          onConditionQuantityChange={presenter.setAgentRuleConditionQuantity}
+          onConditionOperatorChange={presenter.setAgentRuleConditionOperator}
+          onPriorityChange={presenter.setAgentRulePriority}
+          onSubmit={presenter.submitAgentRule}
+        />
       )}
       <WorldTransferSection
         goods={presenter.goods}
