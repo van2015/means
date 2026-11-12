@@ -3,7 +3,13 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import { createStores } from '@/domain/stores'
 import { App } from '@/react/App'
-import { goodNameInput, registerGoodButton } from '../helpers/designModeQueries'
+import {
+  agentNameInput,
+  createAgentButton,
+  goodNameInput,
+  registerGoodButton,
+  withinAgentCatalog,
+} from '../helpers/designModeQueries'
 
 describe('App', () => {
   it('keeps the shared app shell when switching between modes', async () => {
@@ -49,12 +55,18 @@ describe('App', () => {
     await user.type(goodNameInput(), 'Harina')
     await user.click(registerGoodButton())
 
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
 
-    expect(screen.getByText(/bienes registrados: 1/i)).toBeInTheDocument()
+    // the agent created in design mode is available in play mode
+    const agentsList = screen.getByRole('list', { name: /agentes disponibles/i })
+    expect(within(agentsList).getByText('Panadero')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
 
     expect(screen.getByText('Harina')).toBeInTheDocument()
+    expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
   })
 })

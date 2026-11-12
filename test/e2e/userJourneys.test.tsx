@@ -118,7 +118,9 @@ describe('E2E: user journeys across the whole app', () => {
     // --- switch to play mode: shared state is intact ---
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
     expect(screen.getByRole('heading', { name: /modo juego/i })).toBeInTheDocument()
-    expect(screen.getByText(/bienes registrados: 2/i)).toBeInTheDocument()
+    const availableAgents = screen.getByRole('list', { name: /agentes disponibles/i })
+    expect(within(availableAgents).getByText('Panadero')).toBeInTheDocument()
+    expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
 
     // --- back to design mode: catalogs keep the shared data ---
     // (DesignMode unmounts while in play mode, so agent selection is reset)
@@ -347,5 +349,55 @@ describe('E2E: user journeys across the whole app', () => {
     const after = stores.agentStore.findByName('Panadero')
     expect(after.ok).toBe(true)
     if (after.ok) expect(after.agent.recipes).toHaveLength(1)
+  })
+
+  it('journey 7: view available agents and possess one in play mode', async () => {
+    render(<App stores={stores} />)
+
+    // --- create two agents in design mode ---
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+    await user.type(agentNameInput(), 'Obrero')
+    await user.click(createAgentButton())
+
+    // --- go to play mode: both agents are available ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    const availableAgents = screen.getByRole('list', { name: /agentes disponibles/i })
+    expect(within(availableAgents).getAllByRole('listitem')).toHaveLength(2)
+    expect(within(availableAgents).getByText('Panadero')).toBeInTheDocument()
+    expect(within(availableAgents).getByText('Obrero')).toBeInTheDocument()
+    expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
+
+    // --- possess one agent ---
+    const poseerButtons = within(availableAgents).getAllByRole('button', { name: /poseer/i })
+    await user.click(poseerButtons[0])
+
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
+    expect(screen.queryByText(/no posees a ningún agente/i)).not.toBeInTheDocument()
+
+    // the possessed agent shows its status and the rest are disabled (switching is story #9)
+    const items = within(availableAgents).getAllByRole('listitem')
+    expect(within(items[0]).getByText(/poseído/i)).toBeInTheDocument()
+    const remaining = within(availableAgents).getAllByRole('button', { name: /poseer/i })
+    expect(remaining).toHaveLength(1)
+    expect(remaining[0]).toBeDisabled()
+
+    // --- possession survives switching to design mode and back ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
+    expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
+    expect(stores.possessionStore.possessed()?.name).toBe('Panadero')
+  })
+
+  it('journey 8: play mode shows an empty state when there are no agents', async () => {
+    render(<App stores={stores} />)
+
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+
+    expect(screen.getByText(/no hay agentes disponibles/i)).toBeInTheDocument()
+    expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /poseer/i })).not.toBeInTheDocument()
   })
 })
