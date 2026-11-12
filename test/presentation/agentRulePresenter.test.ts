@@ -62,6 +62,36 @@ describe('AgentRulePresenter', () => {
     expect(presenter.errors).toContainEqual({ code: 'NO_RECIPE' })
     expect(presenter.errors).toContainEqual({ code: 'NO_CONDITION_GOOD' })
     expect(presenter.errors).toContainEqual({ code: 'INVALID_CONDITION_QUANTITY' })
+    expect(presenter.errors).toContainEqual({ code: 'INVALID_PRIORITY' })
+  })
+
+  it('rejects an empty priority draft instead of silently using zero (debt fix)', () => {
+    presenter.setRecipeRef({ source: 'catalog', recipeId })
+    presenter.setConditionGoodId(goodId)
+    presenter.setConditionQuantity('2')
+    presenter.setConditionOperator('AT_LEAST')
+    presenter.setPriority('')
+
+    presenter.submit()
+
+    expect(presenter.errors).toContainEqual({ code: 'INVALID_PRIORITY' })
+    const agent = stores.agentStore.findById(agentId)
+    expect(agent.ok).toBe(true)
+    if (agent.ok) expect(agent.agent.rules).toHaveLength(0)
+  })
+
+  it('accepts zero as a priority typed by the user', () => {
+    presenter.setRecipeRef({ source: 'catalog', recipeId })
+    presenter.setConditionGoodId(goodId)
+    presenter.setConditionQuantity('2')
+    presenter.setConditionOperator('AT_LEAST')
+    presenter.setPriority('0')
+
+    presenter.submit()
+
+    const agent = stores.agentStore.findById(agentId)
+    expect(agent.ok).toBe(true)
+    if (agent.ok) expect(agent.agent.rules[0].priority).toBe(0)
   })
 
   it('sorts rules by priority', () => {

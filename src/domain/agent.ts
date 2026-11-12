@@ -105,7 +105,11 @@ export function validateAgent(name: string, inventory: DraftLine[]): AgentError[
   return errors
 }
 
-export function validateRule(recipeId: string, condition: RuleCondition): RuleError[] {
+export function validateRule(
+  recipeId: string,
+  condition: RuleCondition,
+  priority: number,
+): RuleError[] {
   const errors: RuleError[] = []
 
   if (recipeId === '') {
@@ -118,6 +122,10 @@ export function validateRule(recipeId: string, condition: RuleCondition): RuleEr
 
   if (!Number.isFinite(condition.quantity) || condition.quantity <= 0) {
     errors.push({ code: 'INVALID_CONDITION_QUANTITY' })
+  }
+
+  if (!Number.isFinite(priority)) {
+    errors.push({ code: 'INVALID_PRIORITY' })
   }
 
   return errors

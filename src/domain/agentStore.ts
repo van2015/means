@@ -143,7 +143,7 @@ export class AgentStore {
       return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
     }
 
-    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition)
+    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition, priority)
     if (errors.length > 0) {
       return { ok: false, errors }
     }
@@ -176,7 +176,7 @@ export class AgentStore {
       return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
     }
 
-    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition)
+    const errors = this.validateRuleDraft(agentResult.agent, recipeRef, condition, priority)
     if (errors.length > 0) {
       return { ok: false, errors }
     }
@@ -332,8 +332,9 @@ export class AgentStore {
     agent: Agent,
     recipeRef: Rule['recipeRef'],
     condition: RuleCondition,
+    priority: number,
   ): RuleError[] {
-    const errors = validateRule(recipeRef.recipeId, condition)
+    const errors = validateRule(recipeRef.recipeId, condition, priority)
 
     if (recipeRef.recipeId !== '' && !this.ruleRecipeExists(agent, recipeRef)) {
       errors.push({ code: 'RECIPE_NOT_FOUND' })

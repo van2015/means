@@ -435,6 +435,87 @@ describe('AgentStore', () => {
     })
   })
 
+  describe('priority validation (debt fix)', () => {
+    function setupRulelessAgent() {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 1 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) throw new Error('Recipe creation failed')
+      const good = goodStore.findIdByName('Harina')
+      expect(good.ok).toBe(true)
+      if (!good.ok) throw new Error('Good not found')
+      const agent = store.create({ name: 'Panadero', inventory: [] })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) throw new Error('Agent creation failed')
+      return { recipeId: recipe.recipe.id, goodId: good.id, agentId: agent.agent.id }
+    }
+
+    it('rejects a rule with a non-finite priority', () => {
+      const { recipeId, goodId, agentId } = setupRulelessAgent()
+
+      const result = store.addRule(
+        agentId,
+        { source: 'catalog', recipeId },
+        { goodId, quantity: 2, operator: 'AT_LEAST' },
+        Number.NaN,
+      )
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toContainEqual({ code: 'INVALID_PRIORITY' })
+      }
+      const after = store.findById(agentId)
+      expect(after.ok).toBe(true)
+      if (after.ok) expect(after.agent.rules).toHaveLength(0)
+    })
+
+    it('rejects updating a rule to a non-finite priority', () => {
+      const { recipeId, goodId, agentId } = setupRulelessAgent()
+      const created = store.addRule(
+        agentId,
+        { source: 'catalog', recipeId },
+        { goodId, quantity: 2, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(created.ok).toBe(true)
+      if (!created.ok) return
+
+      const result = store.updateRule(
+        agentId,
+        created.rule.id,
+        { source: 'catalog', recipeId },
+        { goodId, quantity: 2, operator: 'AT_LEAST' },
+        Number.NaN,
+      )
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toContainEqual({ code: 'INVALID_PRIORITY' })
+      }
+      const after = store.findById(agentId)
+      expect(after.ok).toBe(true)
+      if (after.ok) expect(after.agent.rules[0].priority).toBe(1)
+    })
+
+    it('accepts zero as a valid priority', () => {
+      const { recipeId, goodId, agentId } = setupRulelessAgent()
+
+      const result = store.addRule(
+        agentId,
+        { source: 'catalog', recipeId },
+        { goodId, quantity: 2, operator: 'AT_LEAST' },
+        0,
+      )
+
+      expect(result.ok).toBe(true)
+    })
+  })
+
   describe('produce', () => {
     function setupProduction() {
       goodStore.create('Harina')

@@ -113,7 +113,9 @@ export class AgentRulePresenter extends Presenter {
       quantity: Number(this.conditionQuantityValue),
       operator: this.conditionOperatorValue,
     }
-    const priority = Number(this.priorityValue)
+    // Number('') is 0 (a valid finite priority), so empty drafts must become NaN
+    const trimmedPriority = this.priorityValue.trim()
+    const priority = trimmedPriority === '' ? Number.NaN : Number(trimmedPriority)
 
     const result = this.editingIdValue
       ? this.agentStore.updateRule(
