@@ -1,7 +1,7 @@
-import type { AgentError, RuleError } from '@/domain/agent'
+import type { AgentError, ProductionError, RuleError } from '@/domain/agent'
 import type { RecipeError } from '@/domain/recipe'
 
-type ValidationError = RecipeError | AgentError | RuleError
+type ValidationError = RecipeError | AgentError | RuleError | ProductionError
 
 export function errorMessage(error: ValidationError): string {
   switch (error.code) {
@@ -35,5 +35,7 @@ export function errorMessage(error: ValidationError): string {
       return 'Agente no encontrado'
     case 'RULE_NOT_FOUND':
       return 'Regla no encontrada'
+    case 'INSUFFICIENT_GOOD':
+      return `Falta ${error.goodName}: necesitas ${error.required}, tienes ${error.available}`
   }
 }

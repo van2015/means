@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { RuleRecipeRef } from '@/domain/agentStore'
 import type { Stores } from '@/domain/stores'
 import { PlayModePresenter } from './playModePresenter'
 
@@ -24,5 +25,6 @@ export function usePlayMode(stores: Stores) {
       presenter.priorityDraft(ruleId, currentPriority),
     setPriorityDraft: (ruleId: string, value: string) => presenter.setPriorityDraft(ruleId, value),
     submitPriority: (ruleId: string) => presenter.submitPriority(ruleId),
+    produce: (recipeRef: RuleRecipeRef) => presenter.produce(recipeRef),
   }
 }

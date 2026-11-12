@@ -1,4 +1,5 @@
 import type { Agent, AgentStore } from '@/domain/agentStore'
+import type { RuleRecipeRef } from '@/domain/agentStore'
 import type { Good, GoodStore } from '@/domain/goodStore'
 import type { PossessionStore } from '@/domain/possessionStore'
 import type { Recipe, RecipeStore } from '@/domain/recipeStore'
@@ -90,6 +91,16 @@ export class PlayModePresenter extends Presenter {
     } else {
       this.errorValue = errorMessage(result.errors[0])
     }
+    this.notify()
+  }
+
+  produce(recipeRef: RuleRecipeRef): void {
+    const agent = this.possessionStore.possessed()
+    if (!agent) return
+
+    const result = this.agentStore.produce(agent.id, recipeRef)
+
+    this.errorValue = result.ok ? null : errorMessage(result.errors[0])
     this.notify()
   }
 }

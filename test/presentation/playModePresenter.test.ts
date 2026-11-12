@@ -187,4 +187,93 @@ describe('PlayModePresenter', () => {
 
     expect(presenter.catalogRecipes.map((recipe) => recipe.name)).toEqual(['Pan de harina'])
   })
+
+  describe('produce', () => {
+    let recipeId: string
+    let flourId: string
+    let panId: string
+
+    beforeEach(() => {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+
+      const flour = stores.goodStore.findIdByName('Harina')
+      const pan = stores.goodStore.findIdByName('Pan')
+      expect(flour.ok && pan.ok).toBe(true)
+      if (!flour.ok || !pan.ok) return
+      flourId = flour.id
+      panId = pan.id
+
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+      recipeId = recipe.recipe.id
+
+      const agent = stores.agentStore.create({
+        name: 'Productor',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+      presenter.possess(agent.agent.id)
+    })
+
+    it('produces and clears the error', () => {
+      presenter.produce({ source: 'catalog', recipeId })
+
+      expect(presenter.error).toBeNull()
+      expect(presenter.possessedAgent?.quantityOf(flourId)).toBe(8)
+      expect(presenter.possessedAgent?.quantityOf(panId)).toBe(1)
+    })
+
+    it('notifies subscribers after producing', () => {
+      let calls = 0
+      presenter.subscribe(() => {
+        calls++
+      })
+
+      presenter.produce({ source: 'catalog', recipeId })
+
+      expect(calls).toBeGreaterThan(0)
+    })
+
+    it('propagates the insufficient-material message without changing the inventory', () => {
+      // drain the flour with four productions
+      presenter.produce({ source: 'catalog', recipeId })
+      presenter.produce({ source: 'catalog', recipeId })
+      presenter.produce({ source: 'catalog', recipeId })
+      presenter.produce({ source: 'catalog', recipeId })
+      expect(presenter.possessedAgent?.quantityOf(flourId)).toBe(2)
+
+      presenter.produce({ source: 'catalog', recipeId })
+      expect(presenter.possessedAgent?.quantityOf(flourId)).toBe(0)
+
+      presenter.produce({ source: 'catalog', recipeId })
+
+      expect(presenter.error).toBe('Falta Harina: necesitas 2, tienes 0')
+      expect(presenter.possessedAgent?.quantityOf(flourId)).toBe(0)
+      expect(presenter.possessedAgent?.quantityOf(panId)).toBe(5)
+    })
+
+    it('does nothing when no agent is possessed', () => {
+      presenter.release()
+
+      presenter.produce({ source: 'catalog', recipeId })
+
+      expect(presenter.error).toBeNull()
+      const agent = stores.agentStore.findByName('Productor')
+      expect(agent.ok).toBe(true)
+      if (agent.ok) expect(agent.agent.quantityOf(flourId)).toBe(10)
+    })
+
+    it('surfaces RECIPE_NOT_FOUND for an unknown recipe', () => {
+      presenter.produce({ source: 'catalog', recipeId: 'no-such-recipe' })
+
+      expect(presenter.error).toBe('Receta no encontrada')
+    })
+  })
 })

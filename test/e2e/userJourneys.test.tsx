@@ -570,4 +570,104 @@ describe('E2E: user journeys across the whole app', () => {
     expect(itemsAgain[0].textContent).toContain('prioridad: 0')
     expect(itemsAgain[1].textContent).toContain('prioridad: 1')
   })
+
+  it('journey 12: produce with catalog and agent recipes', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: goods, recipe (2 Harina → 1 Pan), agent with 10 Harina ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(recipeNameInput(), 'Pan de harina')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+    await user.click(saveRecipeButton())
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    // --- play mode: possess and produce with the catalog recipe ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+    const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+
+    let inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).getByText('Harina: 8')).toBeInTheDocument()
+    expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()
+
+    // --- produce four more times: flour 8 → 6 → 4 → 2 → 0 (line disappears) ---
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+
+    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
+    expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    // --- one more time: insufficient material, nothing changes ---
+    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    expect(screen.getByRole('alert')).toHaveTextContent(/falta harina: necesitas 2, tienes 0/i)
+    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
+    expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
+
+    // --- persistence across mode switches: inventory persists, the error is transient
+    // (the presenter is recreated on remount, so the alert is gone)
+    await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
+    expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('journey 13: produce with an agent-specific recipe', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: goods, agent with inventory and its own recipe ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    await user.click(manageAgentRecipesButton(withinAgentCatalog()))
+    await user.type(agentRecipeNameInput(), 'Horneado propio')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '4')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '2')
+    await user.click(saveAgentRecipeButton())
+
+    // --- play mode: produce with the agent recipe ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+    // no catalog recipes: empty state shown
+    expect(screen.getByText(/no hay recetas en el catálogo/i)).toBeInTheDocument()
+
+    const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
+    expect(within(agentList).getByText('Horneado propio')).toBeInTheDocument()
+    await user.click(within(agentList).getByRole('button', { name: /^producir$/i }))
+
+    const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).getByText('Harina: 6')).toBeInTheDocument()
+    expect(within(inventory).getByText('Pan: 2')).toBeInTheDocument()
+  })
 })

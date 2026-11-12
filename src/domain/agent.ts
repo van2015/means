@@ -50,6 +50,13 @@ export type RuleError =
   | { code: 'AGENT_NOT_FOUND' }
   | { code: 'RULE_NOT_FOUND' }
 
+export type ProductionError =
+  | { code: 'AGENT_NOT_FOUND' }
+  | { code: 'RECIPE_NOT_FOUND' }
+  | { code: 'INSUFFICIENT_GOOD'; goodName: string; required: number; available: number }
+
+export type ProductionResult = { ok: true; agent: Agent } | { ok: false; errors: ProductionError[] }
+
 export class Agent {
   readonly id: string
   readonly name: string

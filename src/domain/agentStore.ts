@@ -1,6 +1,15 @@
 import { generateId } from './id'
 import { Agent, validateAgent, validateRule } from './agent'
-import type { AgentDraft, AgentError, AgentResult, Rule, RuleCondition, RuleError } from './agent'
+import type {
+  AgentDraft,
+  AgentError,
+  AgentResult,
+  InventoryLine,
+  ProductionResult,
+  Rule,
+  RuleCondition,
+  RuleError,
+} from './agent'
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import type { GoodStore } from './goodStore'
@@ -227,6 +236,74 @@ export class AgentStore {
     return { ok: true, rule: agentResult.agent.rules[index] }
   }
 
+  produce(agentId: string, recipeRef: Rule['recipeRef']): ProductionResult {
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
+      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
+    }
+    const agent = agentResult.agent
+
+    const recipe = this.resolveRecipe(agent, recipeRef)
+    if (!recipe) {
+      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
+    }
+
+    // validate every input before touching the inventory
+    for (const line of recipe.inputs) {
+      const available = agent.quantityOf(line.goodId)
+      if (available < line.quantity) {
+        const good = this.goodStore.get(line.goodId)
+        return {
+          ok: false,
+          errors: [
+            {
+              code: 'INSUFFICIENT_GOOD',
+              goodName: good.ok ? good.good.name : '',
+              required: line.quantity,
+              available,
+            },
+          ],
+        }
+      }
+    }
+
+    const quantities = new Map<string, number>()
+    for (const line of agent.inventory) {
+      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) + line.quantity)
+    }
+    for (const line of recipe.inputs) {
+      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) - line.quantity)
+    }
+    for (const line of recipe.outputs) {
+      quantities.set(line.goodId, (quantities.get(line.goodId) ?? 0) + line.quantity)
+    }
+
+    // keep the first-appearance order of existing goods, then append new ones
+    const order: string[] = []
+    for (const line of agent.inventory) {
+      if (!order.includes(line.goodId)) order.push(line.goodId)
+    }
+    for (const line of recipe.outputs) {
+      if (!order.includes(line.goodId)) order.push(line.goodId)
+    }
+
+    const inventory: InventoryLine[] = order
+      .map((goodId) => ({ goodId, quantity: quantities.get(goodId) ?? 0 }))
+      .filter((line) => line.quantity > 0)
+
+    const updated = new Agent(agent.id, agent.name, inventory, agent.recipes, agent.rules)
+    const index = this.agents.findIndex((a) => a.id === agent.id)
+    if (index !== -1) this.agents[index] = updated
+    return { ok: true, agent: updated }
+  }
+
+  private resolveRecipe(agent: Agent, recipeRef: Rule['recipeRef']): Recipe | null {
+    if (recipeRef.source === 'agent') {
+      return agent.recipes.find((recipe) => recipe.id === recipeRef.recipeId) ?? null
+    }
+    return this.recipeStore.all().find((recipe) => recipe.id === recipeRef.recipeId) ?? null
+  }
+
   private validateRuleDraft(
     agent: Agent,
     recipeRef: Rule['recipeRef'],
@@ -244,10 +321,7 @@ export class AgentStore {
   }
 
   private ruleRecipeExists(agent: Agent, recipeRef: Rule['recipeRef']): boolean {
-    if (recipeRef.source === 'agent') {
-      return agent.recipes.some((recipe) => recipe.id === recipeRef.recipeId)
-    }
-    return this.recipeStore.all().some((recipe) => recipe.id === recipeRef.recipeId)
+    return this.resolveRecipe(agent, recipeRef) !== null
   }
 
   private validateDraft(draft: AgentDraft): AgentError[] {
@@ -320,6 +394,9 @@ export type {
   Agent,
   AgentDraft,
   AgentError,
+  InventoryLine,
+  ProductionError,
+  ProductionResult,
   Rule,
   RuleCondition,
   RuleError,

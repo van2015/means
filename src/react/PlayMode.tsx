@@ -1,3 +1,5 @@
+import type { Good } from '@/domain/goodStore'
+import type { Recipe } from '@/domain/recipeStore'
 import type { Stores } from '@/domain/stores'
 import { usePlayMode } from '@/presentation/usePlayMode'
 import { goodName, operatorLabel, recipeName } from './catalogHelpers'
@@ -104,8 +106,68 @@ export function PlayMode({ stores }: PlayModeProps) {
               ))}
             </ul>
           )}
+          <h3>Producir</h3>
+          <h4>Catálogo general</h4>
+          {play.catalogRecipes.length === 0 ? (
+            <p>No hay recetas en el catálogo.</p>
+          ) : (
+            <ul aria-label="Recetas del catálogo para producir">
+              {play.catalogRecipes.map((recipe) => (
+                <ProduceRow
+                  key={recipe.id}
+                  recipe={recipe}
+                  goods={play.goods}
+                  onProduce={() => play.produce({ source: 'catalog', recipeId: recipe.id })}
+                />
+              ))}
+            </ul>
+          )}
+          <h4>Recetas propias</h4>
+          {possessed.recipes.length === 0 ? (
+            <p>No hay recetas propias para producir.</p>
+          ) : (
+            <ul aria-label="Recetas del agente para producir">
+              {possessed.recipes.map((recipe) => (
+                <ProduceRow
+                  key={recipe.id}
+                  recipe={recipe}
+                  goods={play.goods}
+                  onProduce={() => play.produce({ source: 'agent', recipeId: recipe.id })}
+                />
+              ))}
+            </ul>
+          )}
         </section>
       )}
     </div>
+  )
+}
+
+type ProduceRowProps = {
+  recipe: Recipe
+  goods: Good[]
+  onProduce: () => void
+}
+
+function ProduceRow({ recipe, goods, onProduce }: ProduceRowProps) {
+  return (
+    <li>
+      {recipe.name}
+      <ul>
+        {recipe.inputs.map((line, index) => (
+          <li key={`${line.goodId}-${index}`}>
+            Insumo: {goodName(goods, line.goodId)}: {line.quantity}
+          </li>
+        ))}
+        {recipe.outputs.map((line, index) => (
+          <li key={`${line.goodId}-${index}`}>
+            Producto: {goodName(goods, line.goodId)}: {line.quantity}
+          </li>
+        ))}
+      </ul>
+      <button type="button" onClick={onProduce}>
+        Producir
+      </button>
+    </li>
   )
 }

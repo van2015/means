@@ -434,4 +434,174 @@ describe('AgentStore', () => {
       }
     })
   })
+
+  describe('produce', () => {
+    function setupProduction() {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      goodStore.create('Huevos')
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) throw new Error('Recipe creation failed')
+
+      const agent = store.create({
+        name: 'Panadero',
+        inventory: [
+          { goodName: 'Harina', quantity: 10 },
+          { goodName: 'Huevos', quantity: 3 },
+        ],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) throw new Error('Agent creation failed')
+
+      return { recipeId: recipe.recipe.id, agentId: agent.agent.id }
+    }
+
+    it('consumes inputs and produces outputs with a catalog recipe', () => {
+      const { recipeId, agentId } = setupProduction()
+
+      const result = store.produce(agentId, { source: 'catalog', recipeId })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const flourId = goodStore.findIdByName('Harina')
+      const panId = goodStore.findIdByName('Pan')
+      expect(flourId.ok && panId.ok).toBe(true)
+      if (!flourId.ok || !panId.ok) return
+      expect(result.agent.quantityOf(flourId.id)).toBe(8)
+      expect(result.agent.quantityOf(panId.id)).toBe(1)
+      // the store itself reflects the change
+      const after = store.findById(agentId)
+      expect(after.ok).toBe(true)
+      if (after.ok) expect(after.agent.quantityOf(flourId.id)).toBe(8)
+    })
+
+    it('produces with an agent-specific recipe', () => {
+      const { agentId } = setupProduction()
+      const added = store.addRecipe(agentId, {
+        name: 'Horneado propio',
+        inputs: [{ goodName: 'Harina', quantity: 4 }],
+        outputs: [{ goodName: 'Pan', quantity: 2 }],
+      })
+      expect(added.ok).toBe(true)
+      if (!added.ok) return
+
+      const result = store.produce(agentId, { source: 'agent', recipeId: added.recipe.id })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const flourId = goodStore.findIdByName('Harina')
+      const panId = goodStore.findIdByName('Pan')
+      expect(flourId.ok && panId.ok).toBe(true)
+      if (!flourId.ok || !panId.ok) return
+      expect(result.agent.quantityOf(flourId.id)).toBe(6)
+      expect(result.agent.quantityOf(panId.id)).toBe(2)
+    })
+
+    it('rejects production when material is missing and leaves the inventory untouched', () => {
+      const { recipeId } = setupProduction()
+
+      // an agent with less flour than the recipe requires
+      const poor = store.create({
+        name: 'Aprendiz',
+        inventory: [{ goodName: 'Harina', quantity: 1 }],
+      })
+      expect(poor.ok).toBe(true)
+      if (!poor.ok) return
+
+      const result = store.produce(poor.agent.id, { source: 'catalog', recipeId })
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.errors).toEqual([
+        { code: 'INSUFFICIENT_GOOD', goodName: 'Harina', required: 2, available: 1 },
+      ])
+      const after = store.findById(poor.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      const flourId = goodStore.findIdByName('Harina')
+      expect(flourId.ok).toBe(true)
+      if (flourId.ok) expect(after.agent.quantityOf(flourId.id)).toBe(1)
+      expect(after.agent.inventory).toHaveLength(1)
+    })
+
+    it('removes input lines that reach zero and appends new goods at the end', () => {
+      const { recipeId } = setupProduction()
+
+      // exactly one production worth of flour: the line must disappear
+      const agent = store.create({
+        name: 'Preciso',
+        inventory: [
+          { goodName: 'Huevos', quantity: 2 },
+          { goodName: 'Harina', quantity: 2 },
+        ],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+
+      const result = store.produce(agent.agent.id, { source: 'catalog', recipeId })
+
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      const flourId = goodStore.findIdByName('Harina')
+      const panId = goodStore.findIdByName('Pan')
+      const eggsId = goodStore.findIdByName('Huevos')
+      expect(flourId.ok && panId.ok && eggsId.ok).toBe(true)
+      if (!flourId.ok || !panId.ok || !eggsId.ok) return
+
+      const ids = result.agent.inventory.map((line) => line.goodId)
+      // the flour line at 0 is gone
+      expect(ids).not.toContain(flourId.id)
+      // eggs keeps its position, pan is appended at the end
+      expect(ids).toEqual([eggsId.id, panId.id])
+      expect(result.agent.inventory.every((line) => line.quantity > 0)).toBe(true)
+      expect(result.agent.quantityOf(panId.id)).toBe(1)
+    })
+
+    it('returns RECIPE_NOT_FOUND for an unknown recipe', () => {
+      const { agentId } = setupProduction()
+
+      const result = store.produce(agentId, { source: 'catalog', recipeId: 'no-such-recipe' })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'RECIPE_NOT_FOUND' }])
+      }
+    })
+
+    it('returns AGENT_NOT_FOUND for an unknown agent', () => {
+      const result = store.produce('no-such-agent', { source: 'catalog', recipeId: 'x' })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'AGENT_NOT_FOUND' }])
+      }
+    })
+
+    it("cannot produce another agent's recipe through the agent source", () => {
+      const { agentId } = setupProduction()
+      const other = store.create({ name: 'Obrero', inventory: [] })
+      expect(other.ok).toBe(true)
+      if (!other.ok) return
+      const foreign = store.addRecipe(other.agent.id, {
+        name: 'Receta ajena',
+        inputs: [{ goodName: 'Harina', quantity: 1 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(foreign.ok).toBe(true)
+      if (!foreign.ok) return
+
+      const result = store.produce(agentId, { source: 'agent', recipeId: foreign.recipe.id })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'RECIPE_NOT_FOUND' }])
+      }
+    })
+  })
 })

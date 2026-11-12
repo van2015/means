@@ -405,4 +405,126 @@ describe('PlayMode', () => {
       ).not.toBeInTheDocument()
     })
   })
+
+  describe('production', () => {
+    function setupProductionWorld() {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const agent = stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+      stores.agentStore.addRecipe(agent.agent.id, {
+        name: 'Horneado propio',
+        inputs: [{ goodName: 'Harina', quantity: 4 }],
+        outputs: [{ goodName: 'Pan', quantity: 2 }],
+      })
+    }
+
+    it('hides the production section when no agent is possessed', () => {
+      setupProductionWorld()
+
+      render(<PlayMode stores={stores} />)
+
+      expect(screen.queryByRole('heading', { name: /producir/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /recetas del catálogo para producir/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('lists catalog and agent recipes with produce buttons', async () => {
+      const user = userEvent.setup()
+      setupProductionWorld()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByRole('heading', { name: /^producir$/i })).toBeInTheDocument()
+      const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+      expect(within(catalogList).getByText('Pan de harina')).toBeInTheDocument()
+      expect(within(catalogList).getByRole('button', { name: /^producir$/i })).toBeInTheDocument()
+
+      const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
+      expect(within(agentList).getByText('Horneado propio')).toBeInTheDocument()
+      expect(within(agentList).getByRole('button', { name: /^producir$/i })).toBeInTheDocument()
+    })
+
+    it('produces with a catalog recipe and updates the inventory on screen', async () => {
+      const user = userEvent.setup()
+      setupProductionWorld()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+      await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+
+      const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+      expect(within(inventory).getByText('Harina: 8')).toBeInTheDocument()
+      expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('produces with an agent-specific recipe', async () => {
+      const user = userEvent.setup()
+      setupProductionWorld()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
+      await user.click(within(agentList).getByRole('button', { name: /^producir$/i }))
+
+      const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+      expect(within(inventory).getByText('Harina: 6')).toBeInTheDocument()
+      expect(within(inventory).getByText('Pan: 2')).toBeInTheDocument()
+    })
+
+    it('shows an error when material is missing and keeps the inventory', async () => {
+      const user = userEvent.setup()
+      setupProductionWorld()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      // 10 flour: two agent-recipe productions (4 each) leave 2, the third needs 4
+      const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
+      const produceAgentRecipe = () =>
+        within(agentList).getByRole('button', { name: /^producir$/i })
+      await user.click(produceAgentRecipe())
+      await user.click(produceAgentRecipe())
+      // flour is 2 now; the agent recipe needs 4
+      await user.click(produceAgentRecipe())
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/falta harina: necesitas 4, tienes 2/i)
+      const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+      expect(within(inventory).getByText('Harina: 2')).toBeInTheDocument()
+      expect(within(inventory).getByText('Pan: 4')).toBeInTheDocument()
+    })
+
+    it('shows empty states for missing recipes', async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByText(/no hay recetas en el catálogo/i)).toBeInTheDocument()
+      expect(screen.getByText(/no hay recetas propias para producir/i)).toBeInTheDocument()
+    })
+  })
 })
