@@ -449,4 +449,57 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(again[0])
     expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
   })
+
+  it('journey 10: view inventory and recipes of the possessed agent', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: goods, agent with inventory, agent-specific recipe ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    await user.click(manageAgentRecipesButton(withinAgentCatalog()))
+    await user.type(agentRecipeNameInput(), 'Horneado')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '2')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
+
+    // --- play mode: sections hidden until possessing ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    expect(screen.queryByRole('heading', { name: /inventario de/i })).not.toBeInTheDocument()
+
+    // --- possess: inventory and recipes appear ---
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+    expect(screen.getByRole('heading', { name: /inventario de panadero/i })).toBeInTheDocument()
+    const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).getByText('Harina: 10')).toBeInTheDocument()
+
+    expect(screen.getByRole('heading', { name: /recetas de panadero/i })).toBeInTheDocument()
+    const recipes = screen.getByRole('list', { name: /recetas del agente poseído/i })
+    expect(within(recipes).getByText('Horneado')).toBeInTheDocument()
+    expect(within(recipes).getByText(/insumo: harina: 2/i)).toBeInTheDocument()
+    expect(within(recipes).getByText(/producto: pan: 1/i)).toBeInTheDocument()
+
+    // --- release: sections disappear ---
+    await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+    expect(screen.queryByRole('heading', { name: /inventario de/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /recetas de/i })).not.toBeInTheDocument()
+
+    // --- possess again: sections are back, reading the same stores ---
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+    const inventoryAgain = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventoryAgain).getByText('Harina: 10')).toBeInTheDocument()
+    const recipesAgain = screen.getByRole('list', { name: /recetas del agente poseído/i })
+    expect(within(recipesAgain).getByText('Horneado')).toBeInTheDocument()
+  })
 })

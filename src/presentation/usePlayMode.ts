@@ -13,6 +13,7 @@ export function usePlayMode(stores: Stores) {
 
   return {
     agents: presenter.agents,
+    goods: presenter.goods,
     possessedAgentId: presenter.possessedAgentId,
     possessedAgent: presenter.possessedAgent,
     error: presenter.error,

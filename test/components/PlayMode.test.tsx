@@ -122,4 +122,143 @@ describe('PlayMode', () => {
 
     expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
   })
+
+  describe('possessed agent details (inventory and recipes)', () => {
+    it('hides the inventory and recipes sections when no agent is possessed', () => {
+      stores.goodStore.create('Harina')
+      stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+
+      render(<PlayMode stores={stores} />)
+
+      expect(screen.queryByRole('heading', { name: /inventario de/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /recetas de/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /inventario del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows the inventory with resolved good names when possessing an agent', async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Huevos')
+      stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [
+          { goodName: 'Harina', quantity: 10 },
+          { goodName: 'Huevos', quantity: 3 },
+        ],
+      })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+      expect(within(inventory).getByText('Harina: 10')).toBeInTheDocument()
+      expect(within(inventory).getByText('Huevos: 3')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /inventario de panadero/i })).toBeInTheDocument()
+    })
+
+    it('shows an empty inventory message when the possessed agent has no items', async () => {
+      const user = userEvent.setup()
+      stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByText(/el inventario está vacío/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /inventario del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it("shows the possessed agent's recipes with their input and output lines", async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+      const agent = stores.agentStore.create({ name: 'Panadero', inventory: [] })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+      stores.agentStore.addRecipe(agent.agent.id, {
+        name: 'Horneado',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const recipes = screen.getByRole('list', { name: /recetas del agente poseído/i })
+      expect(within(recipes).getByText('Horneado')).toBeInTheDocument()
+      expect(within(recipes).getByText(/insumo: harina: 2/i)).toBeInTheDocument()
+      expect(within(recipes).getByText(/producto: pan: 1/i)).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /recetas de panadero/i })).toBeInTheDocument()
+
+      // read-only: no edit/delete buttons in play mode
+      expect(within(recipes).queryByRole('button', { name: /editar/i })).not.toBeInTheDocument()
+      expect(within(recipes).queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument()
+    })
+
+    it('shows a message when the possessed agent has no recipes', async () => {
+      const user = userEvent.setup()
+      stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByText(/este agente no tiene recetas propias/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /recetas del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('updates the details when switching the possessed agent', async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      stores.agentStore.create({ name: 'Obrero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getAllByRole('button', { name: /^poseer$/i })[0])
+      expect(screen.getByRole('heading', { name: /inventario de panadero/i })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByRole('heading', { name: /inventario de obrero/i })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: /inventario de panadero/i }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByText(/el inventario está vacío/i)).toBeInTheDocument()
+    })
+
+    it('reads the same stores after a remount, reflecting design-mode changes', async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      const agent = stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+
+      const first = render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+      expect(screen.getByText('Harina: 10')).toBeInTheDocument()
+
+      // simulate a design-mode edit on the shared store
+      const lines = agent.agent.inventory
+      lines[0] = { ...lines[0], quantity: 25 }
+
+      // switching modes unmounts and remounts play mode
+      first.unmount()
+      render(<PlayMode stores={stores} />)
+
+      expect(screen.getByText('Harina: 25')).toBeInTheDocument()
+    })
+  })
 })

@@ -1,20 +1,31 @@
 import type { Agent, AgentStore } from '@/domain/agentStore'
+import type { Good, GoodStore } from '@/domain/goodStore'
 import type { PossessionStore } from '@/domain/possessionStore'
 import { Presenter } from './presenter'
 
 export class PlayModePresenter extends Presenter {
   private agentStore: AgentStore
+  private goodStore: GoodStore
   private possessionStore: PossessionStore
   private errorValue: string | null = null
 
-  constructor(stores: { agentStore: AgentStore; possessionStore: PossessionStore }) {
+  constructor(stores: {
+    agentStore: AgentStore
+    goodStore: GoodStore
+    possessionStore: PossessionStore
+  }) {
     super()
     this.agentStore = stores.agentStore
+    this.goodStore = stores.goodStore
     this.possessionStore = stores.possessionStore
   }
 
   get agents(): Agent[] {
     return this.agentStore.all()
+  }
+
+  get goods(): Good[] {
+    return this.goodStore.all()
   }
 
   get possessedAgentId(): string | null {

@@ -24,6 +24,13 @@ describe('PlayModePresenter', () => {
     expect(presenter.error).toBeNull()
   })
 
+  it('exposes the goods from the store', () => {
+    stores.goodStore.create('Harina')
+    stores.goodStore.create('Pan')
+
+    expect(presenter.goods.map((good) => good.name)).toEqual(['Harina', 'Pan'])
+  })
+
   it('possesses an agent and reflects the change', () => {
     presenter.possess(panaderoId)
 
