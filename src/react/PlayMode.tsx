@@ -1,6 +1,6 @@
 import type { Stores } from '@/domain/stores'
 import { usePlayMode } from '@/presentation/usePlayMode'
-import { goodName } from './catalogHelpers'
+import { goodName, operatorLabel, recipeName } from './catalogHelpers'
 
 type PlayModeProps = {
   stores: Stores
@@ -75,6 +75,31 @@ export function PlayMode({ stores }: PlayModeProps) {
                       </li>
                     ))}
                   </ul>
+                </li>
+              ))}
+            </ul>
+          )}
+          <h3>Reglas de {possessed.name}</h3>
+          {possessed.rules.length === 0 ? (
+            <p>Este agente no tiene reglas automáticas.</p>
+          ) : (
+            <ul aria-label="Reglas del agente poseído">
+              {possessed.rules.map((rule, index) => (
+                <li key={rule.id}>
+                  {recipeName(rule.recipeRef, play.catalogRecipes, possessed.recipes)} —{' '}
+                  {operatorLabel(rule.condition.operator)} {rule.condition.quantity}{' '}
+                  {goodName(play.goods, rule.condition.goodId)} (prioridad: {rule.priority})
+                  <label>
+                    Prioridad de la regla {index + 1}
+                    <input
+                      type="number"
+                      value={play.priorityDraft(rule.id, rule.priority)}
+                      onChange={(event) => play.setPriorityDraft(rule.id, event.target.value)}
+                    />
+                  </label>
+                  <button type="button" onClick={() => play.submitPriority(rule.id)}>
+                    Guardar prioridad
+                  </button>
                 </li>
               ))}
             </ul>

@@ -182,6 +182,35 @@ export class AgentStore {
     return { ok: true, rule }
   }
 
+  updateRulePriority(agentId: string, ruleId: string, priority: number): RuleResult {
+    const agentResult = this.findById(agentId)
+    if (!agentResult.ok) {
+      return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
+    }
+
+    const index = agentResult.agent.rules.findIndex((rule) => rule.id === ruleId)
+    if (index === -1) {
+      return { ok: false, errors: [{ code: 'RULE_NOT_FOUND' }] }
+    }
+
+    if (!Number.isFinite(priority)) {
+      return { ok: false, errors: [{ code: 'INVALID_PRIORITY' }] }
+    }
+
+    const previous = agentResult.agent.rules[index]
+    const rule: Rule = {
+      id: previous.id,
+      recipeRef: previous.recipeRef,
+      condition: previous.condition,
+      priority,
+    }
+    const updatedRules = [...agentResult.agent.rules]
+    updatedRules[index] = rule
+    updatedRules.sort((a, b) => a.priority - b.priority)
+    this.replaceAgent(agentResult.agent, agentResult.agent.recipes, updatedRules)
+    return { ok: true, rule }
+  }
+
   deleteRule(agentId: string, ruleId: string): RuleResult {
     const agentResult = this.findById(agentId)
     if (!agentResult.ok) {

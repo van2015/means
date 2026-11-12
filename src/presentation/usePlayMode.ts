@@ -14,10 +14,15 @@ export function usePlayMode(stores: Stores) {
   return {
     agents: presenter.agents,
     goods: presenter.goods,
+    catalogRecipes: presenter.catalogRecipes,
     possessedAgentId: presenter.possessedAgentId,
     possessedAgent: presenter.possessedAgent,
     error: presenter.error,
     possess: (agentId: string) => presenter.possess(agentId),
     release: () => presenter.release(),
+    priorityDraft: (ruleId: string, currentPriority: number) =>
+      presenter.priorityDraft(ruleId, currentPriority),
+    setPriorityDraft: (ruleId: string, value: string) => presenter.setPriorityDraft(ruleId, value),
+    submitPriority: (ruleId: string) => presenter.submitPriority(ruleId),
   }
 }

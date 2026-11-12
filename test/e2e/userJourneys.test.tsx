@@ -502,4 +502,72 @@ describe('E2E: user journeys across the whole app', () => {
     const recipesAgain = screen.getByRole('list', { name: /recetas del agente poseído/i })
     expect(within(recipesAgain).getByText('Horneado')).toBeInTheDocument()
   })
+
+  it('journey 11: change the priority of the possessed agent rules', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: goods, recipe, agent, two rules (priorities 1 and 2) ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(recipeNameInput(), 'Pan de harina')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '1')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+    await user.click(saveRecipeButton())
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+
+    await user.click(manageAgentRulesButton(withinAgentCatalog()))
+    await user.selectOptions(ruleRecipeSelect(), 'Pan de harina')
+    await user.selectOptions(ruleConditionGoodSelect(), 'Harina')
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+
+    await user.selectOptions(ruleRecipeSelect(), 'Pan de harina')
+    await user.selectOptions(ruleConditionGoodSelect(), 'Harina')
+    await user.type(ruleConditionQuantityInput(), '5')
+    await user.selectOptions(ruleConditionOperatorSelect(), 'LESS_THAN')
+    await user.type(rulePriorityInput(), '2')
+    await user.click(saveRuleButton())
+
+    // --- play mode: rules listed in priority order ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+    const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
+    let items = within(rules).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0].textContent).toMatch(/al menos 2 harina/i)
+    expect(items[1].textContent).toMatch(/menos de 5 harina/i)
+
+    // --- change the second rule's priority from 2 to 0 ---
+    const inputs = screen.getAllByLabelText(/prioridad de la regla/i)
+    await user.clear(inputs[1])
+    await user.type(inputs[1], '0')
+    await user.click(screen.getAllByRole('button', { name: /guardar prioridad/i })[1])
+
+    items = within(rules).getAllByRole('listitem')
+    expect(items[0].textContent).toMatch(/menos de 5 harina/i)
+    expect(items[0].textContent).toContain('prioridad: 0')
+    expect(items[1].textContent).toMatch(/al menos 2 harina/i)
+    expect(items[1].textContent).toContain('prioridad: 1')
+
+    // --- persistence: design mode and back ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
+    await user.click(manageAgentRulesButton(withinAgentCatalog()))
+    expect(withinAgentCatalog().getByText(/menos de 5 harina/i)).toBeInTheDocument()
+    expect(withinAgentCatalog().getByText(/prioridad: 0/i)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    const rulesAgain = screen.getByRole('list', { name: /reglas del agente poseído/i })
+    const itemsAgain = within(rulesAgain).getAllByRole('listitem')
+    expect(itemsAgain[0].textContent).toContain('prioridad: 0')
+    expect(itemsAgain[1].textContent).toContain('prioridad: 1')
+  })
 })

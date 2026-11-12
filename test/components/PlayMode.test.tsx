@@ -261,4 +261,148 @@ describe('PlayMode', () => {
       expect(screen.getByText('Harina: 25')).toBeInTheDocument()
     })
   })
+
+  describe('possessed agent rules (priority editing)', () => {
+    function createAgentWithRules(): { ruleLabels: RegExp[] } {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 1 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return { ruleLabels: [] }
+      const good = stores.goodStore.findIdByName('Harina')
+      expect(good.ok).toBe(true)
+      if (!good.ok) return { ruleLabels: [] }
+
+      const agent = stores.agentStore.create({ name: 'Panadero', inventory: [] })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return { ruleLabels: [] }
+
+      const first = stores.agentStore.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: good.id, quantity: 2, operator: 'AT_LEAST' },
+        1,
+      )
+      const second = stores.agentStore.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: good.id, quantity: 5, operator: 'LESS_THAN' },
+        2,
+      )
+      expect(first.ok && second.ok).toBe(true)
+
+      return {
+        ruleLabels: [/al menos 2 harina/i, /menos de 5 harina/i],
+      }
+    }
+
+    it('hides the rules section when no agent is possessed', () => {
+      createAgentWithRules()
+
+      render(<PlayMode stores={stores} />)
+
+      expect(screen.queryByRole('heading', { name: /reglas de/i })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /reglas del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('shows the rules ordered by priority when possessing an agent', async () => {
+      const user = userEvent.setup()
+      const { ruleLabels } = createAgentWithRules()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByRole('heading', { name: /reglas de panadero/i })).toBeInTheDocument()
+      const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
+      const items = within(rules).getAllByRole('listitem')
+      expect(items).toHaveLength(2)
+      expect(items[0].textContent).toMatch(ruleLabels[0])
+      expect(items[1].textContent).toMatch(ruleLabels[1])
+      expect(items[0].textContent).toContain('prioridad: 1')
+      expect(items[1].textContent).toContain('prioridad: 2')
+    })
+
+    it('shows a message when the possessed agent has no rules', async () => {
+      const user = userEvent.setup()
+      stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByText(/este agente no tiene reglas automáticas/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /reglas del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('reorders the rules after saving a new priority', async () => {
+      const user = userEvent.setup()
+      createAgentWithRules()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      // second rule (priority 2) becomes priority 0
+      const inputs = screen.getAllByLabelText(/prioridad de la regla/i)
+      expect(inputs).toHaveLength(2)
+      await user.clear(inputs[1])
+      await user.type(inputs[1], '0')
+      await user.click(screen.getAllByRole('button', { name: /guardar prioridad/i })[1])
+
+      const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
+      const items = within(rules).getAllByRole('listitem')
+      expect(items[0].textContent).toMatch(/menos de 5 harina/i)
+      expect(items[0].textContent).toContain('prioridad: 0')
+      expect(items[1].textContent).toMatch(/al menos 2 harina/i)
+      expect(items[1].textContent).toContain('prioridad: 1')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+
+    it('rejects an invalid priority with an alert and keeps the order', async () => {
+      const user = userEvent.setup()
+      createAgentWithRules()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const inputs = screen.getAllByLabelText(/prioridad de la regla/i)
+      await user.clear(inputs[0])
+      await user.click(screen.getAllByRole('button', { name: /guardar prioridad/i })[0])
+
+      expect(screen.getByRole('alert')).toHaveTextContent(/prioridad debe ser un número válido/i)
+
+      const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
+      const items = within(rules).getAllByRole('listitem')
+      expect(items[0].textContent).toContain('prioridad: 1')
+      expect(items[1].textContent).toContain('prioridad: 2')
+
+      // the store was not modified
+      const agent = stores.agentStore.findByName('Panadero')
+      expect(agent.ok).toBe(true)
+      if (agent.ok) expect(agent.agent.rules.map((rule) => rule.priority)).toEqual([1, 2])
+    })
+
+    it('shows the rules of the newly possessed agent', async () => {
+      const user = userEvent.setup()
+      createAgentWithRules()
+      stores.agentStore.create({ name: 'Obrero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getAllByRole('button', { name: /^poseer$/i })[0])
+      expect(screen.getByRole('list', { name: /reglas del agente poseído/i })).toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      expect(screen.getByText(/este agente no tiene reglas automáticas/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('list', { name: /reglas del agente poseído/i }),
+      ).not.toBeInTheDocument()
+    })
+  })
 })

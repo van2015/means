@@ -343,4 +343,95 @@ describe('AgentStore', () => {
       expect(result.errors).toEqual([{ code: 'RECIPE_NOT_FOUND' }])
     }
   })
+
+  describe('updateRulePriority', () => {
+    function setupAgentWithTwoRules(): { agentId: string; ruleIds: [string, string] } {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 1 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) throw new Error('Recipe creation failed')
+
+      const good = goodStore.findIdByName('Harina')
+      expect(good.ok).toBe(true)
+      if (!good.ok) throw new Error('Good not found')
+
+      const agent = store.create({ name: 'Panadero', inventory: [] })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) throw new Error('Agent creation failed')
+
+      const first = store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: good.id, quantity: 2, operator: 'AT_LEAST' },
+        1,
+      )
+      const second = store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: good.id, quantity: 5, operator: 'LESS_THAN' },
+        2,
+      )
+      expect(first.ok && second.ok).toBe(true)
+      if (!first.ok || !second.ok) throw new Error('Rule creation failed')
+
+      return { agentId: agent.agent.id, ruleIds: [first.rule.id, second.rule.id] }
+    }
+
+    it('updates the priority and reorders the rules', () => {
+      const { agentId, ruleIds } = setupAgentWithTwoRules()
+
+      const result = store.updateRulePriority(agentId, ruleIds[1], 0)
+
+      expect(result.ok).toBe(true)
+      const after = store.findById(agentId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.rules.map((rule) => rule.id)).toEqual([ruleIds[1], ruleIds[0]])
+      expect(after.agent.rules[0].priority).toBe(0)
+      // recipeRef and condition are preserved
+      expect(after.agent.rules[0].condition.quantity).toBe(5)
+      expect(after.agent.rules[0].condition.operator).toBe('LESS_THAN')
+    })
+
+    it('rejects a non-finite priority without changing the rules', () => {
+      const { agentId, ruleIds } = setupAgentWithTwoRules()
+
+      const result = store.updateRulePriority(agentId, ruleIds[0], Number.NaN)
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'INVALID_PRIORITY' }])
+      }
+      const after = store.findById(agentId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.rules.map((rule) => rule.priority)).toEqual([1, 2])
+    })
+
+    it('returns RULE_NOT_FOUND for an unknown rule', () => {
+      const { agentId } = setupAgentWithTwoRules()
+
+      const result = store.updateRulePriority(agentId, 'no-such-rule', 5)
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'RULE_NOT_FOUND' }])
+      }
+    })
+
+    it('returns AGENT_NOT_FOUND for an unknown agent', () => {
+      const result = store.updateRulePriority('no-such-agent', 'no-such-rule', 5)
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toEqual([{ code: 'AGENT_NOT_FOUND' }])
+      }
+    })
+  })
 })

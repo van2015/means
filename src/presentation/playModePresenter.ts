@@ -1,22 +1,28 @@
 import type { Agent, AgentStore } from '@/domain/agentStore'
 import type { Good, GoodStore } from '@/domain/goodStore'
 import type { PossessionStore } from '@/domain/possessionStore'
+import type { Recipe, RecipeStore } from '@/domain/recipeStore'
+import { errorMessage } from '@/i18n/errors'
 import { Presenter } from './presenter'
 
 export class PlayModePresenter extends Presenter {
   private agentStore: AgentStore
   private goodStore: GoodStore
+  private recipeStore: RecipeStore
   private possessionStore: PossessionStore
   private errorValue: string | null = null
+  private priorityDrafts = new Map<string, string>()
 
   constructor(stores: {
     agentStore: AgentStore
     goodStore: GoodStore
+    recipeStore: RecipeStore
     possessionStore: PossessionStore
   }) {
     super()
     this.agentStore = stores.agentStore
     this.goodStore = stores.goodStore
+    this.recipeStore = stores.recipeStore
     this.possessionStore = stores.possessionStore
   }
 
@@ -26,6 +32,10 @@ export class PlayModePresenter extends Presenter {
 
   get goods(): Good[] {
     return this.goodStore.all()
+  }
+
+  get catalogRecipes(): Recipe[] {
+    return this.recipeStore.all()
   }
 
   get possessedAgentId(): string | null {
@@ -49,6 +59,37 @@ export class PlayModePresenter extends Presenter {
   release(): void {
     this.possessionStore.release()
     this.errorValue = null
+    this.priorityDrafts.clear()
+    this.notify()
+  }
+
+  priorityDraft(ruleId: string, currentPriority: number): string {
+    return this.priorityDrafts.get(ruleId) ?? String(currentPriority)
+  }
+
+  setPriorityDraft(ruleId: string, value: string): void {
+    this.priorityDrafts.set(ruleId, value)
+    this.notify()
+  }
+
+  submitPriority(ruleId: string): void {
+    const agent = this.possessionStore.possessed()
+    if (!agent) return
+
+    const draft = this.priorityDrafts.get(ruleId)
+    if (draft === undefined) return
+
+    // Number('') is 0, so empty drafts are rejected here before reaching the store
+    const trimmed = draft.trim()
+    const priority = trimmed === '' ? Number.NaN : Number(trimmed)
+    const result = this.agentStore.updateRulePriority(agent.id, ruleId, priority)
+
+    if (result.ok) {
+      this.priorityDrafts.delete(ruleId)
+      this.errorValue = null
+    } else {
+      this.errorValue = errorMessage(result.errors[0])
+    }
     this.notify()
   }
 }

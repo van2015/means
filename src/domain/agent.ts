@@ -46,6 +46,7 @@ export type RuleError =
   | { code: 'NO_CONDITION_GOOD' }
   | { code: 'UNKNOWN_CONDITION_GOOD' }
   | { code: 'INVALID_CONDITION_QUANTITY' }
+  | { code: 'INVALID_PRIORITY' }
   | { code: 'AGENT_NOT_FOUND' }
   | { code: 'RULE_NOT_FOUND' }
 

@@ -29,6 +29,8 @@ export function errorMessage(error: ValidationError): string {
       return 'El bien de la condición no está registrado'
     case 'INVALID_CONDITION_QUANTITY':
       return 'La cantidad de la condición debe ser mayor que cero'
+    case 'INVALID_PRIORITY':
+      return 'La prioridad debe ser un número válido'
     case 'AGENT_NOT_FOUND':
       return 'Agente no encontrado'
     case 'RULE_NOT_FOUND':

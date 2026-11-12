@@ -1,7 +1,7 @@
 import type { Agent, Rule } from '@/domain/agentStore'
 import type { Good } from '@/domain/goodStore'
 import type { Recipe } from '@/domain/recipeStore'
-import { goodName } from './catalogHelpers'
+import { goodName, operatorLabel, recipeName } from './catalogHelpers'
 
 type AgentCatalogProps = {
   agents: Agent[]
@@ -15,19 +15,6 @@ type AgentCatalogProps = {
   onDeleteRecipe: (recipeId: string) => void
   onEditRule: (rule: Rule) => void
   onDeleteRule: (ruleId: string) => void
-}
-
-function recipeName(
-  recipeRef: Rule['recipeRef'],
-  catalogRecipes: Recipe[],
-  agentRecipes: Recipe[],
-): string {
-  const recipes = recipeRef.source === 'catalog' ? catalogRecipes : agentRecipes
-  return recipes.find((recipe) => recipe.id === recipeRef.recipeId)?.name ?? ''
-}
-
-function operatorLabel(operator: Rule['condition']['operator']): string {
-  return operator === 'AT_LEAST' ? 'al menos' : 'menos de'
 }
 
 export function AgentCatalog({
