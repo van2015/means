@@ -143,6 +143,23 @@ function transferApi(p: WorldTransferPresenter) {
   }
 }
 
+// selection is coordinated: only one of the agent forms may be active at a time
+function selectionApi({ agent, agentRecipe, agentRule }: DesignPresenters) {
+  const selectAgent = (agentId: string) => {
+    agent.selectAgent(agentId)
+    agentRecipe.setAgentId(agentId)
+    agentRule.setAgentId(null)
+  }
+
+  const selectAgentRules = (agentId: string) => {
+    agent.selectAgentRules(agentId)
+    agentRecipe.setAgentId(null)
+    agentRule.setAgentId(agentId)
+  }
+
+  return { selectAgent, selectAgentRules }
+}
+
 /**
  * Composes the design-mode presenters into the flat API consumed by the UI.
  * The API is grouped per feature: each builder owns one presenter, so adding a
@@ -160,19 +177,6 @@ export function useDesignMode(stores: Stores) {
 
   usePresenterSync(presenterList, binding.stores, rerender)
 
-  // selection is coordinated: only one of the agent forms may be active
-  const selectAgent = (agentId: string) => {
-    presenters.agent.selectAgent(agentId)
-    presenters.agentRecipe.setAgentId(agentId)
-    presenters.agentRule.setAgentId(null)
-  }
-
-  const selectAgentRules = (agentId: string) => {
-    presenters.agent.selectAgentRules(agentId)
-    presenters.agentRecipe.setAgentId(null)
-    presenters.agentRule.setAgentId(agentId)
-  }
-
   return {
     ...recipeApi(presenters.recipe),
     ...goodApi(presenters.good),
@@ -180,7 +184,6 @@ export function useDesignMode(stores: Stores) {
     ...agentRecipeApi(presenters.agentRecipe),
     ...agentRuleApi(presenters.agentRule),
     ...transferApi(presenters.transfer),
-    selectAgent,
-    selectAgentRules,
+    ...selectionApi(presenters),
   }
 }

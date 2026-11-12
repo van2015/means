@@ -6,24 +6,7 @@ import { usePresenterSync } from './usePresenterSync'
 
 export const PLAY_TICK_MS = 1000
 
-export function usePlayMode(stores: Stores) {
-  // the presenter and the stores it mutates are captured together, so saving
-  // always targets the instance the presenter actually writes to
-  const [binding] = useState(() => ({ presenter: new PlayModePresenter(stores), stores }))
-  const { presenter } = binding
-  const [, forceUpdate] = useState({})
-  const rerender = useCallback(() => forceUpdate({}), [])
-  const presenterList = useMemo(() => [presenter], [presenter])
-
-  usePresenterSync(presenterList, binding.stores, rerender)
-
-  // background economy: non-possessed agents run their automatic rules while
-  // play mode is mounted; switching to design mode unmounts it and stops the loop
-  useEffect(() => {
-    const intervalId = setInterval(() => presenter.tick(), PLAY_TICK_MS)
-    return () => clearInterval(intervalId)
-  }, [presenter])
-
+function playApi(presenter: PlayModePresenter) {
   return {
     agents: presenter.agents,
     catalogRecipes: presenter.catalogRecipes,
@@ -42,4 +25,25 @@ export function usePlayMode(stores: Stores) {
     submitPriority: (ruleId: string) => presenter.submitPriority(ruleId),
     produce: (recipeRef: RuleRecipeRef) => presenter.produce(recipeRef),
   }
+}
+
+export function usePlayMode(stores: Stores) {
+  // the presenter and the stores it mutates are captured together, so saving
+  // always targets the instance the presenter actually writes to
+  const [binding] = useState(() => ({ presenter: new PlayModePresenter(stores), stores }))
+  const { presenter } = binding
+  const [, forceUpdate] = useState({})
+  const rerender = useCallback(() => forceUpdate({}), [])
+  const presenterList = useMemo(() => [presenter], [presenter])
+
+  usePresenterSync(presenterList, binding.stores, rerender)
+
+  // background economy: non-possessed agents run their automatic rules while
+  // play mode is mounted; switching to design mode unmounts it and stops the loop
+  useEffect(() => {
+    const intervalId = setInterval(() => presenter.tick(), PLAY_TICK_MS)
+    return () => clearInterval(intervalId)
+  }, [presenter])
+
+  return playApi(presenter)
 }
