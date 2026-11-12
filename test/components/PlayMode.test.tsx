@@ -405,6 +405,26 @@ describe('PlayMode', () => {
         screen.queryByRole('list', { name: /reglas del agente poseído/i }),
       ).not.toBeInTheDocument()
     })
+
+    it('shows the placeholder when the rule recipe was deleted (debt fix)', async () => {
+      const user = userEvent.setup()
+      createAgentWithRules()
+
+      // delete the catalog recipe the rule points to
+      const recipe = stores.recipeStore.findByName('Pan de harina')
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+      stores.recipeStore.delete(recipe.recipe.id)
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+      const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
+      // both rules point at the same deleted recipe
+      const placeholders = within(rules).getAllByText(/\(receta borrada\)/i)
+      expect(placeholders).toHaveLength(2)
+      expect(within(rules).queryByText(/^ —/i)).not.toBeInTheDocument()
+    })
   })
 
   describe('production', () => {

@@ -832,4 +832,45 @@ describe('DesignMode', () => {
     const tortillaIndex = ruleTexts.findIndex((text) => text?.includes('Tortilla —'))
     expect(tortillaIndex).toBeLessThan(panIndex)
   })
+
+  it('shows an explicit placeholder for rules whose catalog recipe was deleted (debt fix)', async () => {
+    const user = userEvent.setup()
+    const recipe = stores.recipeStore.create({
+      name: 'Pan de harina',
+      inputs: [{ goodName: 'Harina', quantity: 2 }],
+      outputs: [{ goodName: 'Pan', quantity: 1 }],
+    })
+    expect(recipe.ok).toBe(true)
+    if (!recipe.ok) return
+    const harina = stores.goodStore.findIdByName('Harina')
+    expect(harina.ok).toBe(true)
+    if (!harina.ok) return
+
+    render(<DesignMode stores={stores} />)
+
+    // create an agent with a rule referencing the catalog recipe
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+    const agentCatalog = withinAgentCatalog()
+    await user.click(manageAgentRulesButton(agentCatalog))
+    await user.selectOptions(ruleRecipeSelect(), `catalog:${recipe.recipe.id}`)
+    await user.selectOptions(ruleConditionGoodSelect(), harina.id)
+    await user.type(ruleConditionQuantityInput(), '2')
+    await user.type(rulePriorityInput(), '1')
+    await user.click(saveRuleButton())
+    expect(agentCatalog.getByText(/pan de harina —/i)).toBeInTheDocument()
+
+    // delete the recipe from the catalog
+    const recipeCatalog = withinRecipeCatalog()
+    await user.click(recipeCatalog.getByRole('button', { name: /eliminar/i }))
+    expect(recipeCatalog.queryByText('Pan de harina')).not.toBeInTheDocument()
+
+    // the rule is still there, now with an explicit placeholder instead of an empty name
+    const rulesList = agentCatalog.getByRole('list', { name: /reglas del agente/i })
+    expect(within(rulesList).getByText(/\(receta borrada\) —/i)).toBeInTheDocument()
+    expect(within(rulesList).queryByText(/^ —/i)).not.toBeInTheDocument()
+    // and it remains editable: the user can repoint it
+    expect(within(rulesList).getByRole('button', { name: /editar/i })).toBeInTheDocument()
+    expect(within(rulesList).getByRole('button', { name: /eliminar/i })).toBeInTheDocument()
+  })
 })

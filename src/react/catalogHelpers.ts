@@ -12,7 +12,9 @@ export function recipeName(
   agentRecipes: Recipe[],
 ): string {
   const recipes = recipeRef.source === 'catalog' ? catalogRecipes : agentRecipes
-  return recipes.find((recipe) => recipe.id === recipeRef.recipeId)?.name ?? ''
+  // a rule whose recipe was deleted is not silently shown as an empty name:
+  // it stays visible (and editable) with an explicit placeholder
+  return recipes.find((recipe) => recipe.id === recipeRef.recipeId)?.name ?? '(receta borrada)'
 }
 
 export function operatorLabel(operator: Rule['condition']['operator']): string {
