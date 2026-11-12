@@ -7,6 +7,7 @@ import { AgentRulePresenter } from './agentRulePresenter'
 import { GoodPresenter } from './goodPresenter'
 import type { LineDraftField } from './lineDraft'
 import { RecipePresenter } from './recipePresenter'
+import { WorldTransferPresenter } from './worldTransferPresenter'
 
 export function useDesignMode(stores: Stores) {
   const [recipePresenter] = useState(() => new RecipePresenter(stores))
@@ -14,6 +15,7 @@ export function useDesignMode(stores: Stores) {
   const [agentPresenter] = useState(() => new AgentPresenter({ agentStore: stores.agentStore }))
   const [agentRecipePresenter] = useState(() => new AgentRecipePresenter(stores))
   const [agentRulePresenter] = useState(() => new AgentRulePresenter(stores))
+  const [worldTransferPresenter] = useState(() => new WorldTransferPresenter(stores))
   const [, forceUpdate] = useState({})
 
   useEffect(() => {
@@ -23,10 +25,18 @@ export function useDesignMode(stores: Stores) {
       agentPresenter,
       agentRecipePresenter,
       agentRulePresenter,
+      worldTransferPresenter,
     ]
     const unsubscribes = presenters.map((presenter) => presenter.subscribe(() => forceUpdate({})))
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
-  }, [recipePresenter, goodPresenter, agentPresenter, agentRecipePresenter, agentRulePresenter])
+  }, [
+    recipePresenter,
+    goodPresenter,
+    agentPresenter,
+    agentRecipePresenter,
+    agentRulePresenter,
+    worldTransferPresenter,
+  ])
 
   const selectAgent = (agentId: string) => {
     agentPresenter.selectAgent(agentId)
@@ -114,5 +124,18 @@ export function useDesignMode(stores: Stores) {
     startEditAgentRule: (rule: Rule) => agentRulePresenter.startEdit(rule),
     deleteAgentRule: (ruleId: string) => agentRulePresenter.deleteRule(ruleId),
     catalogRecipes: agentRulePresenter.catalogRecipes,
+    transferSelectedGoods: worldTransferPresenter.selectedGoods,
+    transferSelectedRecipes: worldTransferPresenter.selectedRecipes,
+    transferSelectedAgents: worldTransferPresenter.selectedAgents,
+    transferSelectedCount: worldTransferPresenter.selectedCount,
+    transferCanExport: worldTransferPresenter.canExport,
+    transferImportErrors: worldTransferPresenter.importErrors,
+    transferImportSummary: worldTransferPresenter.importSummary,
+    toggleTransferGood: (id: string) => worldTransferPresenter.toggleGood(id),
+    toggleTransferRecipe: (id: string) => worldTransferPresenter.toggleRecipe(id),
+    toggleTransferAgent: (id: string) => worldTransferPresenter.toggleAgent(id),
+    exportTransferJson: (): string | null => worldTransferPresenter.exportJson(),
+    importTransferJson: (json: string) => worldTransferPresenter.importJson(json),
+    clearTransferResult: () => worldTransferPresenter.clearResult(),
   }
 }

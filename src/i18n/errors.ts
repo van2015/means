@@ -1,5 +1,6 @@
 import type { AgentError, ProductionError, RuleError } from '@/domain/agent'
 import type { RecipeError } from '@/domain/recipe'
+import type { ImportError } from '@/domain/worldTransfer'
 
 type ValidationError = RecipeError | AgentError | RuleError | ProductionError
 
@@ -37,5 +38,22 @@ export function errorMessage(error: ValidationError): string {
       return 'Regla no encontrada'
     case 'INSUFFICIENT_GOOD':
       return `Falta ${error.goodName}: necesitas ${error.required}, tienes ${error.available}`
+  }
+}
+
+export function importErrorMessage(error: ImportError): string {
+  switch (error.code) {
+    case 'INVALID_JSON':
+      return 'El archivo no es un JSON válido'
+    case 'UNSUPPORTED_VERSION':
+      return `Versión de archivo no soportada: ${JSON.stringify(error.version)}`
+    case 'INVALID_STRUCTURE':
+      return error.path === ''
+        ? 'El archivo no tiene la estructura de un mundo exportado'
+        : `Estructura inválida en "${error.path}"`
+    case 'DUPLICATE_NAME':
+      return `El archivo contiene ${error.kind}s duplicados: "${error.name}"`
+    case 'MISSING_REFERENCE':
+      return `El ${error.kind} "${error.name}" referenciado por ${error.source} "${error.sourceName}" no existe ni en el archivo ni en el mundo`
   }
 }

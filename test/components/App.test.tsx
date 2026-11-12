@@ -66,7 +66,10 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
 
-    expect(screen.getByText('Harina')).toBeInTheDocument()
+    const goodsCatalog = screen
+      .getByRole('heading', { name: /bienes y servicios/i })
+      .closest('section')!
+    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
     expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
   })
 })

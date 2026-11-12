@@ -4,6 +4,7 @@ import { AgentCatalog } from './AgentCatalog'
 import { RecipeCatalog } from './RecipeCatalog'
 import { RecipeLineForm } from './RecipeLineForm'
 import { ValidationErrors } from './ValidationErrors'
+import { WorldTransferSection } from './WorldTransferSection'
 
 type DesignModeProps = {
   stores?: Stores
@@ -264,6 +265,23 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
           <ValidationErrors errors={presenter.agentRuleErrors} />
         </section>
       )}
+      <WorldTransferSection
+        goods={presenter.goods}
+        recipes={presenter.recipes}
+        agents={presenter.agents}
+        selectedGoods={presenter.transferSelectedGoods}
+        selectedRecipes={presenter.transferSelectedRecipes}
+        selectedAgents={presenter.transferSelectedAgents}
+        selectedCount={presenter.transferSelectedCount}
+        canExport={presenter.transferCanExport}
+        importErrors={presenter.transferImportErrors}
+        importSummary={presenter.transferImportSummary}
+        onToggleGood={presenter.toggleTransferGood}
+        onToggleRecipe={presenter.toggleTransferRecipe}
+        onToggleAgent={presenter.toggleTransferAgent}
+        exportJson={presenter.exportTransferJson}
+        onImport={presenter.importTransferJson}
+      />
     </div>
   )
 }

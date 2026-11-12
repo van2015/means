@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStores, type Stores } from '@/domain/stores'
 import { PLAY_TICK_MS } from '@/presentation/usePlayMode'
 import { App } from '@/react/App'
@@ -771,5 +771,131 @@ describe('E2E: user journeys across the whole app', () => {
     const workerInventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(workerInventory).getByText(`Harina: ${workerFlour}`)).toBeInTheDocument()
     expect(within(workerInventory).getByText(`Pan: ${workerPan}`)).toBeInTheDocument()
+  })
+
+  it('journey 15: export a world selection and import it into another world', async () => {
+    // --- world A: build a complete economy ---
+    const worldA = createStores()
+    const first = render(<App stores={worldA} />)
+
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(recipeNameInput(), 'Pan de harina')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+    await user.click(saveRecipeButton())
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    await user.click(manageAgentRecipesButton(withinAgentCatalog()))
+    await user.type(agentRecipeNameInput(), 'Horneado propio')
+    await user.click(addAgentRecipeInputButton())
+    await user.type(agentRecipeInputGoodName(1), 'Harina')
+    await user.type(agentRecipeInputQuantity(1), '1')
+    await user.click(addAgentRecipeOutputButton())
+    await user.type(agentRecipeOutputGoodName(1), 'Pan')
+    await user.type(agentRecipeOutputQuantity(1), '1')
+    await user.click(saveAgentRecipeButton())
+
+    // rule referencing the catalog recipe (setup via store, as in journey 14)
+    const recipeA = worldA.recipeStore.findByName('Pan de harina')
+    const harinaA = worldA.goodStore.findIdByName('Harina')
+    const agentA = worldA.agentStore.findByName('Panadero')
+    expect(recipeA.ok && harinaA.ok && agentA.ok).toBe(true)
+    if (!recipeA.ok || !harinaA.ok || !agentA.ok) return
+    worldA.agentStore.addRule(
+      agentA.agent.id,
+      { source: 'catalog', recipeId: recipeA.recipe.id },
+      { goodId: harinaA.id, quantity: 5, operator: 'AT_LEAST' },
+      1,
+    )
+
+    // --- select everything and export (capturing the would-be download) ---
+    const capturedBlobs: Blob[] = []
+    URL.createObjectURL = ((blob: Blob) => {
+      capturedBlobs.push(blob)
+      return 'blob:mock'
+    }) as typeof URL.createObjectURL
+    URL.revokeObjectURL = () => undefined
+    const anchorClick = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined)
+
+    const transferSection = screen
+      .getByRole('heading', { name: /exportar \/ importar mundo/i })
+      .closest('section')!
+    const checkboxes = within(transferSection).getAllByRole('checkbox')
+    for (const checkbox of checkboxes) {
+      await user.click(checkbox)
+    }
+    await user.click(within(transferSection).getByRole('button', { name: /exportar selección/i }))
+
+    expect(anchorClick).toHaveBeenCalled()
+    expect(capturedBlobs).toHaveLength(1)
+    const exportedJson = await capturedBlobs[0].text()
+    const exported = JSON.parse(exportedJson)
+    expect(exported.version).toBe(1)
+    expect(exported.goods.map((g: { name: string }) => g.name).sort()).toEqual(['Harina', 'Pan'])
+    expect(exported.recipes.map((r: { name: string }) => r.name)).toEqual(['Pan de harina'])
+    expect(exported.agents.map((a: { name: string }) => a.name)).toEqual(['Panadero'])
+    expect(exported.agents[0].recipes.map((r: { name: string }) => r.name)).toEqual([
+      'Horneado propio',
+    ])
+    expect(exported.agents[0].rules).toHaveLength(1)
+    vi.restoreAllMocks()
+
+    // --- world B: empty, import the file ---
+    first.unmount()
+    const worldB = createStores()
+    render(<App stores={worldB} />)
+
+    const file = new File([exportedJson], 'means-mundo.json', { type: 'application/json' })
+    const transferSectionB = screen
+      .getByRole('heading', { name: /exportar \/ importar mundo/i })
+      .closest('section')!
+    await user.upload(within(transferSectionB).getByLabelText(/importar archivo/i), file)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(/se importaron/i)
+
+    // --- verify everything landed in world B's UI ---
+    const goodsCatalog = screen
+      .getByRole('heading', { name: /bienes y servicios/i })
+      .closest('section')!
+    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
+    expect(within(goodsCatalog).getByText('Pan')).toBeInTheDocument()
+    expect(withinRecipeCatalog().getByText('Pan de harina')).toBeInTheDocument()
+    expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
+
+    await user.click(manageAgentRecipesButton(withinAgentCatalog()))
+    expect(withinAgentCatalog().getByText('Horneado propio')).toBeInTheDocument()
+
+    await user.click(manageAgentRulesButton(withinAgentCatalog()))
+    expect(withinAgentCatalog().getByText(/al menos 5 harina/i)).toBeInTheDocument()
+    expect(withinAgentCatalog().getByText(/prioridad: 1/i)).toBeInTheDocument()
+
+    // --- re-import: everything is omitted, nothing duplicated ---
+    await user.upload(
+      within(
+        screen.getByRole('heading', { name: /exportar \/ importar mundo/i }).closest('section')!,
+      ).getByLabelText(/importar archivo/i),
+      file,
+    )
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      /se importaron 0 elementos y se omitieron/i,
+    )
+    expect(worldB.goodStore.all()).toHaveLength(2)
+    expect(worldB.recipeStore.count()).toBe(1)
+    expect(worldB.agentStore.count()).toBe(1)
+    expect(worldB.agentStore.all()[0].rules).toHaveLength(1)
   })
 })

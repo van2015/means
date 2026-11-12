@@ -251,7 +251,10 @@ describe('DesignMode', () => {
     await user.click(registerGoodButton())
 
     expect(screen.getByRole('heading', { name: /bienes y servicios/i })).toBeInTheDocument()
-    expect(screen.getByText('Harina')).toBeInTheDocument()
+    const goodsCatalog = screen
+      .getByRole('heading', { name: /bienes y servicios/i })
+      .closest('section')!
+    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
   })
 
   it('shows an error when registering a good with an empty name', async () => {
