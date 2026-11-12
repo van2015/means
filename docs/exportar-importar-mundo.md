@@ -62,3 +62,13 @@ Requires: #1
 - **Referencias por nombre, no por id**: los ids son aleatorios por sesión; los nombres ya son únicos por catálogo, que es el identificador natural entre mundos.
 - **Todo-o-nada**: un archivo a mano editado con una referencia rota no deja el mundo a medias; alternativa: importar lo válido y reportar el resto.
 - **UI en modo diseño** al final de la página: la historia dice "como usuario" sin modo, pero exportar/importar es gestión de contenido. Si también lo quieres en modo juego, es montar la misma sección en `PlayMode`.
+
+## Fichero de ejemplo
+
+`docs/ejemplo-mundo.json` es un mundo de muestra listo para probar la importación desde "Exportar / importar mundo" en modo diseño:
+
+- **11 bienes** (panadería, carpintería, herrería)
+- **7 recetas de catálogo**, incluida una con dos entradas ("Forjar hacha")
+- **3 agentes** con inventario, **receta propia** cada uno y **2 reglas** (mezcla de reglas sobre recetas del catálogo y del propio agente, operadores `AT_LEAST`/`LESS_THAN` y prioridades 1–3)
+
+La valida `test/domain/ejemploMundo.test.ts` contra el `importWorld` real, así que el fichero no puede quedar obsoleto si evoluciona el formato.

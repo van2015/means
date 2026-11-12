@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "goods": [
+    { "name": "Trigo" },
+    { "name": "Harina" },
+    { "name": "Pan" },
+    { "name": "Huevos" },
+    { "name": "Tortilla" },
+    { "name": "Madera" },
+    { "name": "Tabla" },
+    { "name": "Cajón" },
+    { "name": "Hierro" },
+    { "name": "Lingote de hierro" },
+    { "name": "Hacha" }
+  ],
+  "recipes": [
+    {
+      "name": "Moler trigo",
+      "inputs": [{ "good": "Trigo", "quantity": 2 }],
+      "outputs": [{ "good": "Harina", "quantity": 1 }]
+    },
+    {
+      "name": "Hornear pan",
+      "inputs": [{ "good": "Harina", "quantity": 2 }],
+      "outputs": [{ "good": "Pan", "quantity": 1 }]
+    },
+    {
+      "name": "Preparar tortilla",
+      "inputs": [{ "good": "Huevos", "quantity": 3 }],
+      "outputs": [{ "good": "Tortilla", "quantity": 1 }]
+    },
+    {
+      "name": "Aserrar madera",
+      "inputs": [{ "good": "Madera", "quantity": 1 }],
+      "outputs": [{ "good": "Tabla", "quantity": 2 }]
+    },
+    {
+      "name": "Armar cajón",
+      "inputs": [{ "good": "Tabla", "quantity": 2 }],
+      "outputs": [{ "good": "Cajón", "quantity": 1 }]
+    },
+    {
+      "name": "Fundir hierro",
+      "inputs": [{ "good": "Hierro", "quantity": 2 }],
+      "outputs": [{ "good": "Lingote de hierro", "quantity": 1 }]
+    },
+    {
+      "name": "Forjar hacha",
+      "inputs": [
+        { "good": "Lingote de hierro", "quantity": 2 },
+        { "good": "Madera", "quantity": 1 }
+      ],
+      "outputs": [{ "good": "Hacha", "quantity": 1 }]
+    }
+  ],
+  "agents": [
+    {
+      "name": "Molinero",
+      "inventory": [
+        { "good": "Trigo", "quantity": 20 },
+        { "good": "Madera", "quantity": 5 }
+      ],
+      "recipes": [
+        {
+          "name": "Molido fino",
+          "inputs": [{ "good": "Trigo", "quantity": 1 }],
+          "outputs": [{ "good": "Harina", "quantity": 1 }]
+        }
+      ],
+      "rules": [
+        {
+          "recipe": { "source": "catalog", "name": "Moler trigo" },
+          "condition": { "good": "Trigo", "quantity": 10, "operator": "AT_LEAST" },
+          "priority": 1
+        },
+        {
+          "recipe": { "source": "agent", "name": "Molido fino" },
+          "condition": { "good": "Trigo", "quantity": 5, "operator": "LESS_THAN" },
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "name": "Herrero",
+      "inventory": [
+        { "good": "Hierro", "quantity": 15 },
+        { "good": "Madera", "quantity": 8 }
+      ],
+      "recipes": [
+        {
+          "name": "Hacha ligera",
+          "inputs": [
+            { "good": "Lingote de hierro", "quantity": 1 },
+            { "good": "Madera", "quantity": 1 }
+          ],
+          "outputs": [{ "good": "Hacha", "quantity": 1 }]
+        }
+      ],
+      "rules": [
+        {
+          "recipe": { "source": "catalog", "name": "Fundir hierro" },
+          "condition": { "good": "Hierro", "quantity": 6, "operator": "AT_LEAST" },
+          "priority": 1
+        },
+        {
+          "recipe": { "source": "agent", "name": "Hacha ligera" },
+          "condition": { "good": "Lingote de hierro", "quantity": 2, "operator": "AT_LEAST" },
+          "priority": 2
+        }
+      ]
+    },
+    {
+      "name": "Granjero",
+      "inventory": [
+        { "good": "Huevos", "quantity": 30 },
+        { "good": "Trigo", "quantity": 12 }
+      ],
+      "recipes": [
+        {
+          "name": "Tortilla doble",
+          "inputs": [{ "good": "Huevos", "quantity": 4 }],
+          "outputs": [{ "good": "Tortilla", "quantity": 2 }]
+        }
+      ],
+      "rules": [
+        {
+          "recipe": { "source": "catalog", "name": "Hornear pan" },
+          "condition": { "good": "Harina", "quantity": 4, "operator": "AT_LEAST" },
+          "priority": 1
+        },
+        {
+          "recipe": { "source": "catalog", "name": "Preparar tortilla" },
+          "condition": { "good": "Huevos", "quantity": 10, "operator": "AT_LEAST" },
+          "priority": 3
+        }
+      ]
+    }
+  ]
+}
