@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RuleRecipeRef } from '@/domain/agentStore'
 import type { Stores } from '@/domain/stores'
+import { saveWorld } from '@/persistence'
 import { PlayModePresenter } from './playModePresenter'
 
 export const PLAY_TICK_MS = 1000
@@ -10,9 +11,12 @@ export function usePlayMode(stores: Stores) {
   const [, forceUpdate] = useState({})
 
   useEffect(() => {
-    const unsubscribe = presenter.subscribe(() => forceUpdate({}))
+    const unsubscribe = presenter.subscribe(() => {
+      forceUpdate({})
+      saveWorld(stores)
+    })
     return unsubscribe
-  }, [presenter])
+  }, [presenter, stores])
 
   // background economy: non-possessed agents run their automatic rules while
   // play mode is mounted; switching to design mode unmounts it and stops the loop

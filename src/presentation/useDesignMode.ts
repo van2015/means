@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Rule, RuleRecipeRef } from '@/domain/agent'
 import type { Stores } from '@/domain/stores'
+import { saveWorld } from '@/persistence'
 import { AgentPresenter } from './agentPresenter'
 import { AgentRecipePresenter } from './agentRecipePresenter'
 import { AgentRulePresenter } from './agentRulePresenter'
@@ -27,7 +28,14 @@ export function useDesignMode(stores: Stores) {
       agentRulePresenter,
       worldTransferPresenter,
     ]
-    const unsubscribes = presenters.map((presenter) => presenter.subscribe(() => forceUpdate({})))
+    // every store mutation flows through a presenter notification, so this
+    // is the single choke point that keeps localStorage in sync
+    const unsubscribes = presenters.map((presenter) =>
+      presenter.subscribe(() => {
+        forceUpdate({})
+        saveWorld(stores)
+      }),
+    )
     return () => unsubscribes.forEach((unsubscribe) => unsubscribe())
   }, [
     recipePresenter,
@@ -36,6 +44,7 @@ export function useDesignMode(stores: Stores) {
     agentRecipePresenter,
     agentRulePresenter,
     worldTransferPresenter,
+    stores,
   ])
 
   const selectAgent = (agentId: string) => {

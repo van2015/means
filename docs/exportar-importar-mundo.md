@@ -48,7 +48,7 @@ Requires: #1
 
 ## Out of scope
 
-- Persistencia en backend/SQLite (el stack objetivo lo menciona, pero no hay historia en el backlog).
+- Persistencia en backend/SQLite (el stack objetivo lo menciona, pero no hay historia en el backlog). **Nota:** se añadió persistencia local con `localStorage` (ver `docs/deuda-tecnica.md`); el backend sigue pendiente.
 - Exportar/importar desde modo juego (la gestión del mundo es de modo diseño).
 - Modo "reemplazar todo" al importar (solo fusion-omitir); importar solo parte de un archivo.
 - Exportar estado de sesión (agente poseído, borradores de formulario).

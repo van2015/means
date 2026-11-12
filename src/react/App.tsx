@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createStores, type Stores } from '@/domain/stores'
+import { loadWorld } from '@/persistence'
 import { DesignMode } from './DesignMode'
 import { PlayMode } from './PlayMode'
 
@@ -10,7 +11,14 @@ type AppProps = {
 }
 
 export function App({ stores: providedStores }: AppProps) {
-  const [stores] = useState(() => providedStores ?? createStores())
+  const [stores] = useState(() => {
+    // only App-owned stores restore the saved world: injected stores
+    // (tests, embedding) keep their lifecycle outside of persistence
+    if (providedStores) return providedStores
+    const created = createStores()
+    loadWorld(created)
+    return created
+  })
   const [mode, setMode] = useState<Mode>('design')
 
   return (

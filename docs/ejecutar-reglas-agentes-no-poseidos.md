@@ -49,7 +49,7 @@ Requires: #6, #8
 
 - Feedback visible de la actividad de fondo (log, indicadores) — ver suggestions.
 - Ejecutar el bucle en modo diseño (se para al salir de modo juego; es una decisión, ver suggestions).
-- Limpiar reglas huérfanas cuando se borra una receta del catálogo en modo diseño (produce las salta con `RECIPE_NOT_FOUND`, pero la regla permanece visible con nombre vacío en modo diseño).
+- Limpiar reglas huérfanas cuando se borra una receta del catálogo en modo diseño (produce las salta con `RECIPE_NOT_FOUND`, pero la regla permanece visible con nombre vacío en modo diseño). **Corregido** en `docs/deuda-tecnica.md`: la regla muestra `(receta borrada)` en vez de un nombre vacío (sin borrado en cascada).
 - Ejecución del agente poseído de forma automática (el jugador lo controla a mano: #12).
 - Velocidad/configuración del tick, prioridades dinámicas, animaciones.
 

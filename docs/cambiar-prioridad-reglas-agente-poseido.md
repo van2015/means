@@ -51,4 +51,4 @@ Requires: #6, #8
 
 - **Control de prioridad**: propuesto número absoluto + botón "Guardar", consistente con el input de prioridad de modo diseño. Alternativa: botones subir/bajar (más cómodo para reordenar, pero implica prioridades relativas y rompe la consistencia con modo diseño).
 - **Extraer `recipeName`/`operatorLabel` a `catalogHelpers`**: planificado para no duplicar la lógica de resolución de reglas entre vistas; toca `AgentCatalog` solo como import.
-- **Gap de validación en modo diseño**: se puede abrir un ticket aparte para validar prioridad en `validateRule` (ambos modos compartirían `INVALID_PRIORITY`); no incluido aquí para no ampliar el alcance de #11.
+- **Gap de validación en modo diseño**: ~~se puede abrir un ticket aparte para validar prioridad en `validateRule`~~ **corregido** en `docs/deuda-tecnica.md` — `validateRule` ahora valida la prioridad en ambos modos.
