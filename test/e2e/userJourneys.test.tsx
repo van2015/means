@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createStores, type Stores } from '@/domain/stores'
+import { PLAY_TICK_MS } from '@/presentation/usePlayMode'
 import { App } from '@/react/App'
 import {
   addAgentInventoryLineButton,
@@ -669,5 +670,106 @@ describe('E2E: user journeys across the whole app', () => {
     const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(inventory).getByText('Harina: 6')).toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 2')).toBeInTheDocument()
+  })
+
+  it('journey 14: background agents keep running their rules while another is possessed', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: recipe and two agents with the same automatic rule ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(recipeNameInput(), 'Pan de harina')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+    await user.click(saveRecipeButton())
+
+    const harina = stores.goodStore.findIdByName('Harina')
+    const recipe = stores.recipeStore.findByName('Pan de harina')
+    expect(harina.ok && recipe.ok).toBe(true)
+    if (!harina.ok || !recipe.ok) return
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    await user.type(agentNameInput(), 'Obrero')
+    await user.click(addAgentInventoryLineButton())
+    await user.type(agentInventoryGoodName(1), 'Harina')
+    await user.type(agentInventoryQuantity(1), '10')
+    await user.click(createAgentButton())
+
+    const baker = stores.agentStore.findByName('Panadero')
+    const worker = stores.agentStore.findByName('Obrero')
+    expect(baker.ok && worker.ok).toBe(true)
+    if (!baker.ok || !worker.ok) return
+
+    for (const agent of [baker.agent, worker.agent]) {
+      const rule = stores.agentStore.addRule(
+        agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harina.id, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+    }
+
+    // --- play mode: possess the baker (first in the list) ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    const availableAgents = screen.getByRole('list', { name: /agentes disponibles/i })
+    await user.click(within(availableAgents).getAllByRole('button', { name: /^poseer$/i })[0])
+
+    // snapshot right after possession: whatever the baker had at this point
+    const bakerAtPossession = stores.agentStore.findById(baker.agent.id)
+    expect(bakerAtPossession.ok).toBe(true)
+    if (!bakerAtPossession.ok) return
+    const bakerFlourAtPossession = bakerAtPossession.agent.quantityOf(harina.id)
+
+    // --- the worker keeps producing in the background ---
+    await waitFor(
+      () => {
+        const workerNow = stores.agentStore.findById(worker.agent.id)
+        expect(workerNow.ok).toBe(true)
+        if (!workerNow.ok) return
+        expect(workerNow.agent.quantityOf(harina.id)).toBeLessThan(10)
+      },
+      { timeout: PLAY_TICK_MS * 4 },
+    )
+
+    // --- the possessed baker did NOT run its rules meanwhile ---
+    const bakerAfter = stores.agentStore.findById(baker.agent.id)
+    expect(bakerAfter.ok).toBe(true)
+    if (!bakerAfter.ok) return
+    expect(bakerAfter.agent.quantityOf(harina.id)).toBe(bakerFlourAtPossession)
+    const bakerInventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(
+      within(bakerInventory).getByText(`Harina: ${bakerFlourAtPossession}`),
+    ).toBeInTheDocument()
+
+    // --- switching possession reveals the worker's produced inventory ---
+    const remaining = within(
+      screen.getByRole('list', { name: /agentes disponibles/i }),
+    ).getAllByRole('button', { name: /^poseer$/i })
+    expect(remaining).toHaveLength(1)
+    await user.click(remaining[0])
+
+    const workerNow = stores.agentStore.findById(worker.agent.id)
+    const pan = stores.goodStore.findIdByName('Pan')
+    expect(workerNow.ok && pan.ok).toBe(true)
+    if (!workerNow.ok || !pan.ok) return
+    const workerFlour = workerNow.agent.quantityOf(harina.id)
+    const workerPan = workerNow.agent.quantityOf(pan.id)
+    expect(workerFlour).toBeLessThan(10)
+    expect(workerPan).toBeGreaterThan(0)
+
+    const workerInventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(workerInventory).getByText(`Harina: ${workerFlour}`)).toBeInTheDocument()
+    expect(within(workerInventory).getByText(`Pan: ${workerPan}`)).toBeInTheDocument()
   })
 })

@@ -3,6 +3,8 @@ import type { RuleRecipeRef } from '@/domain/agentStore'
 import type { Stores } from '@/domain/stores'
 import { PlayModePresenter } from './playModePresenter'
 
+export const PLAY_TICK_MS = 1000
+
 export function usePlayMode(stores: Stores) {
   const [presenter] = useState(() => new PlayModePresenter(stores))
   const [, forceUpdate] = useState({})
@@ -10,6 +12,13 @@ export function usePlayMode(stores: Stores) {
   useEffect(() => {
     const unsubscribe = presenter.subscribe(() => forceUpdate({}))
     return unsubscribe
+  }, [presenter])
+
+  // background economy: non-possessed agents run their automatic rules while
+  // play mode is mounted; switching to design mode unmounts it and stops the loop
+  useEffect(() => {
+    const intervalId = setInterval(() => presenter.tick(), PLAY_TICK_MS)
+    return () => clearInterval(intervalId)
   }, [presenter])
 
   return {

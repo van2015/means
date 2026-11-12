@@ -276,4 +276,121 @@ describe('PlayModePresenter', () => {
       expect(presenter.error).toBe('Receta no encontrada')
     })
   })
+
+  describe('tick', () => {
+    let bakerId: string
+    let flourId: string
+    let panId: string
+    let ruleId: string
+
+    beforeEach(() => {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+
+      const flour = stores.goodStore.findIdByName('Harina')
+      const pan = stores.goodStore.findIdByName('Pan')
+      expect(flour.ok && pan.ok).toBe(true)
+      if (!flour.ok || !pan.ok) return
+      flourId = flour.id
+      panId = pan.id
+
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = stores.agentStore.create({
+        name: 'Horneador',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      bakerId = baker.agent.id
+
+      const rule = stores.agentStore.addRule(
+        bakerId,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: flourId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+      if (!rule.ok) return
+      ruleId = rule.rule.id
+    })
+
+    it('produces for non-possessed agents and returns the count', () => {
+      const count = presenter.tick()
+
+      expect(count).toBe(1)
+      const baker = stores.agentStore.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      expect(baker.agent.quantityOf(flourId)).toBe(8)
+      expect(baker.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('does not run rules for the possessed agent', () => {
+      presenter.possess(bakerId)
+
+      const count = presenter.tick()
+
+      expect(count).toBe(0)
+      const baker = stores.agentStore.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      expect(baker.agent.quantityOf(flourId)).toBe(10)
+    })
+
+    it('notifies subscribers only when something was produced', () => {
+      presenter.possess(bakerId)
+
+      let calls = 0
+      presenter.subscribe(() => {
+        calls++
+      })
+
+      // possessed: the tick must not re-render
+      presenter.tick()
+      expect(calls).toBe(0)
+
+      presenter.release()
+      calls = 0
+      presenter.tick()
+      expect(calls).toBeGreaterThan(0)
+    })
+
+    it('never sets an error', () => {
+      presenter.tick()
+      presenter.possess(bakerId)
+      presenter.tick()
+
+      expect(presenter.error).toBeNull()
+    })
+
+    it('a second tick keeps producing while the condition holds', () => {
+      presenter.tick()
+      const count = presenter.tick()
+
+      expect(count).toBe(1)
+      const baker = stores.agentStore.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      // condition needs at least 5 flour: 10 → 8 → 6 still holds, then it stops
+      expect(baker.agent.quantityOf(flourId)).toBe(6)
+      expect(baker.agent.quantityOf(panId)).toBe(2)
+
+      presenter.tick()
+      presenter.tick()
+      const afterCondition = presenter.tick()
+      expect(afterCondition).toBe(0)
+      const final = stores.agentStore.findById(bakerId)
+      expect(final.ok).toBe(true)
+      if (!final.ok) return
+      expect(final.agent.quantityOf(flourId)).toBeLessThan(5)
+      expect(ruleId).toBeTruthy()
+    })
+  })
 })

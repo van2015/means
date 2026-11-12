@@ -12,12 +12,15 @@ import type {
 } from './agent'
 import { createRecipeEntity, validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
+import { applicableRules } from './ruleEngine'
 import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
 
 export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: 'AGENT_NOT_FOUND' }
 
 export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
+
+export type AutomaticProduction = { agentId: string; ruleId: string }
 
 export class AgentStore {
   private agents: Agent[] = []
@@ -295,6 +298,27 @@ export class AgentStore {
     const index = this.agents.findIndex((a) => a.id === agent.id)
     if (index !== -1) this.agents[index] = updated
     return { ok: true, agent: updated }
+  }
+
+  runAutomaticRules(excludeAgentId: string | null): AutomaticProduction[] {
+    const executed: AutomaticProduction[] = []
+
+    // iterate over a copy: produce() replaces elements of this.agents
+    for (const agent of [...this.agents]) {
+      if (agent.id === excludeAgentId) continue
+
+      for (const rule of applicableRules(agent)) {
+        const result = this.produce(agent.id, rule.recipeRef)
+        if (result.ok) {
+          // one action per agent per tick; priority already ordered by the store
+          executed.push({ agentId: agent.id, ruleId: rule.id })
+          break
+        }
+        // insufficient material or a deleted recipe: silently try the next rule
+      }
+    }
+
+    return executed
   }
 
   private resolveRecipe(agent: Agent, recipeRef: Rule['recipeRef']): Recipe | null {

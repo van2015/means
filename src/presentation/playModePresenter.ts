@@ -103,4 +103,12 @@ export class PlayModePresenter extends Presenter {
     this.errorValue = result.ok ? null : errorMessage(result.errors[0])
     this.notify()
   }
+
+  tick(): number {
+    const executed = this.agentStore.runAutomaticRules(this.possessionStore.possessedAgentId())
+
+    // only re-render when the background economy actually changed something
+    if (executed.length > 0) this.notify()
+    return executed.length
+  }
 }

@@ -1,7 +1,8 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStores, type Stores } from '@/domain/stores'
+import { PLAY_TICK_MS } from '@/presentation/usePlayMode'
 import { PlayMode } from '@/react/PlayMode'
 
 describe('PlayMode', () => {
@@ -525,6 +526,118 @@ describe('PlayMode', () => {
 
       expect(screen.getByText(/no hay recetas en el catálogo/i)).toBeInTheDocument()
       expect(screen.getByText(/no hay recetas propias para producir/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('game loop (automatic rules in the background)', () => {
+    let flourId: string
+    let panId: string
+    let bakerId: string
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+      const flour = stores.goodStore.findIdByName('Harina')
+      const pan = stores.goodStore.findIdByName('Pan')
+      expect(flour.ok && pan.ok).toBe(true)
+      if (!flour.ok || !pan.ok) return
+      flourId = flour.id
+      panId = pan.id
+
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      bakerId = baker.agent.id
+
+      stores.agentStore.addRule(
+        bakerId,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: flourId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('produces for non-possessed agents after each tick', () => {
+      render(<PlayMode stores={stores} />)
+
+      act(() => {
+        vi.advanceTimersByTime(PLAY_TICK_MS)
+      })
+
+      const baker = stores.agentStore.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      expect(baker.agent.quantityOf(flourId)).toBe(8)
+      expect(baker.agent.quantityOf(panId)).toBe(1)
+
+      act(() => {
+        vi.advanceTimersByTime(PLAY_TICK_MS)
+      })
+
+      const after = stores.agentStore.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(flourId)).toBe(6)
+      expect(after.agent.quantityOf(panId)).toBe(2)
+    })
+
+    it('does not run rules for the possessed agent', () => {
+      const possessed = stores.possessionStore.possess(bakerId)
+      expect(possessed.ok).toBe(true)
+
+      render(<PlayMode stores={stores} />)
+
+      act(() => {
+        vi.advanceTimersByTime(PLAY_TICK_MS * 3)
+      })
+
+      const baker = stores.agentStore.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      expect(baker.agent.quantityOf(flourId)).toBe(10)
+      expect(baker.agent.quantityOf(panId)).toBe(0)
+    })
+
+    it('stops the loop when play mode unmounts', () => {
+      const { unmount } = render(<PlayMode stores={stores} />)
+
+      act(() => {
+        vi.advanceTimersByTime(PLAY_TICK_MS)
+      })
+
+      const before = stores.agentStore.findById(bakerId)
+      expect(before.ok).toBe(true)
+      if (!before.ok) return
+      expect(before.agent.quantityOf(flourId)).toBe(8)
+
+      unmount()
+      act(() => {
+        vi.advanceTimersByTime(PLAY_TICK_MS * 3)
+      })
+
+      const after = stores.agentStore.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      // no further production after unmount
+      expect(after.agent.quantityOf(flourId)).toBe(8)
+      expect(after.agent.quantityOf(panId)).toBe(1)
     })
   })
 })

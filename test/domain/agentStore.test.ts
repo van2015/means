@@ -604,4 +604,273 @@ describe('AgentStore', () => {
       }
     })
   })
+
+  describe('runAutomaticRules', () => {
+    function goodIds() {
+      const harina = goodStore.findIdByName('Harina')
+      const pan = goodStore.findIdByName('Pan')
+      expect(harina.ok && pan.ok).toBe(true)
+      if (!harina.ok || !pan.ok) throw new Error('Goods not found')
+      return { harinaId: harina.id, panId: pan.id }
+    }
+
+    function setupWorld() {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) throw new Error('Recipe creation failed')
+
+      const baker = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) throw new Error('Agent creation failed')
+
+      const rule = store.addRule(
+        baker.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harinaId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+      if (!rule.ok) throw new Error('Rule creation failed')
+
+      return {
+        recipeId: recipe.recipe.id,
+        bakerId: baker.agent.id,
+        harinaId,
+        panId,
+        ruleId: rule.rule.id,
+      }
+    }
+
+    it('produces for non-possessed agents whose condition holds', () => {
+      const { bakerId, harinaId, panId, ruleId } = setupWorld()
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toEqual([{ agentId: bakerId, ruleId }])
+      const after = store.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(8)
+      expect(after.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('excludes the possessed agent', () => {
+      const { bakerId, harinaId } = setupWorld()
+
+      const executed = store.runAutomaticRules(bakerId)
+
+      expect(executed).toEqual([])
+      const after = store.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(10)
+    })
+
+    it('runs every agent when nobody is possessed', () => {
+      const { recipeId, harinaId } = setupWorld()
+      const second = store.create({
+        name: 'Obrero',
+        inventory: [{ goodName: 'Harina', quantity: 4 }],
+      })
+      expect(second.ok).toBe(true)
+      if (!second.ok) return
+      const rule = store.addRule(
+        second.agent.id,
+        { source: 'catalog', recipeId },
+        { goodId: harinaId, quantity: 2, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toHaveLength(2)
+      const baker = store.findByName('Panadero')
+      const obrero = store.findByName('Obrero')
+      expect(baker.ok && obrero.ok).toBe(true)
+      if (!baker.ok || !obrero.ok) return
+      expect(baker.agent.quantityOf(harinaId)).toBe(8)
+      expect(obrero.agent.quantityOf(harinaId)).toBe(2)
+    })
+
+    it('executes only one rule per agent per tick, in priority order', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      // two rules, both applicable, different priorities
+      const agent = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+
+      const cheap = recipeStore.create({
+        name: 'Pan barato',
+        inputs: [{ goodName: 'Harina', quantity: 1 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      const expensive = recipeStore.create({
+        name: 'Pan caro',
+        inputs: [{ goodName: 'Harina', quantity: 5 }],
+        outputs: [{ goodName: 'Pan', quantity: 3 }],
+      })
+      expect(cheap.ok && expensive.ok).toBe(true)
+      if (!cheap.ok || !expensive.ok) return
+
+      // priority 2 added first, priority 1 added second: store must still order them
+      store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: expensive.recipe.id },
+        { goodId: harinaId, quantity: 5, operator: 'AT_LEAST' },
+        2,
+      )
+      const priorityOne = store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: cheap.recipe.id },
+        { goodId: harinaId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(priorityOne.ok).toBe(true)
+      if (!priorityOne.ok) return
+
+      const executed = store.runAutomaticRules(null)
+
+      // only the priority-1 rule ran, and only once
+      expect(executed).toEqual([{ agentId: agent.agent.id, ruleId: priorityOne.rule.id }])
+      const after = store.findById(agent.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(9)
+      expect(after.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('falls through to the next rule when the first cannot run', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      // agent has 3 flour: rule priority 1 needs 5 (impossible), priority 2 needs 2 (possible)
+      const agent = store.create({
+        name: 'Aprendiz',
+        inventory: [{ goodName: 'Harina', quantity: 3 }],
+      })
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return
+
+      const needsFive = recipeStore.create({
+        name: 'Receta cara',
+        inputs: [{ goodName: 'Harina', quantity: 5 }],
+        outputs: [{ goodName: 'Pan', quantity: 2 }],
+      })
+      const needsTwo = recipeStore.create({
+        name: 'Receta barata',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(needsFive.ok && needsTwo.ok).toBe(true)
+      if (!needsFive.ok || !needsTwo.ok) return
+
+      store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: needsFive.recipe.id },
+        { goodId: harinaId, quantity: 3, operator: 'AT_LEAST' },
+        1,
+      )
+      const fallback = store.addRule(
+        agent.agent.id,
+        { source: 'catalog', recipeId: needsTwo.recipe.id },
+        { goodId: harinaId, quantity: 3, operator: 'AT_LEAST' },
+        2,
+      )
+      expect(fallback.ok).toBe(true)
+      if (!fallback.ok) return
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toEqual([{ agentId: agent.agent.id, ruleId: fallback.rule.id }])
+      const after = store.findById(agent.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(1)
+      expect(after.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('does not execute rules whose condition does not hold', () => {
+      const { bakerId, harinaId } = setupWorld()
+      // lower the stock below the condition threshold (5)
+      const baker = store.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      const drained = store.addRecipe(bakerId, {
+        name: 'Drenar',
+        inputs: [{ goodName: 'Harina', quantity: 8 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(drained.ok).toBe(true)
+      if (!drained.ok) return
+      const drainedResult = store.produce(bakerId, { source: 'agent', recipeId: drained.recipe.id })
+      expect(drainedResult.ok).toBe(true)
+      if (!drainedResult.ok) return
+      expect(drainedResult.agent.quantityOf(harinaId)).toBe(2)
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toEqual([])
+      const after = store.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(2)
+    })
+
+    it('skips rules whose recipe was deleted without breaking the loop', () => {
+      const { recipeId, bakerId, harinaId } = setupWorld()
+
+      // a second agent with a rule pointing at the recipe we are about to delete
+      const other = store.create({
+        name: 'Obrero',
+        inventory: [{ goodName: 'Harina', quantity: 4 }],
+      })
+      expect(other.ok).toBe(true)
+      if (!other.ok) return
+      const otherRule = store.addRule(
+        other.agent.id,
+        { source: 'catalog', recipeId },
+        { goodId: harinaId, quantity: 2, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(otherRule.ok).toBe(true)
+      if (!otherRule.ok) return
+
+      // delete the shared recipe: both rules become dangling
+      recipeStore.delete(recipeId)
+
+      // the dangling rules fail silently; the baker also has a dangling recipe ref now
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toEqual([])
+      const baker = store.findById(bakerId)
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      expect(baker.agent.quantityOf(harinaId)).toBe(10)
+    })
+
+    it('returns an empty list when there is nothing to do', () => {
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toEqual([])
+    })
+  })
 })
