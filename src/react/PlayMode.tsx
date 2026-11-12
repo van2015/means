@@ -23,11 +23,7 @@ export function PlayMode({ stores }: PlayModeProps) {
                 {play.possessedAgentId === agent.id ? (
                   <span> Poseído</span>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={play.possessedAgentId !== null}
-                    onClick={() => play.possess(agent.id)}
-                  >
+                  <button type="button" onClick={() => play.possess(agent.id)}>
                     Poseer
                   </button>
                 )}
@@ -40,6 +36,11 @@ export function PlayMode({ stores }: PlayModeProps) {
             ? `Poseído: ${play.possessedAgent.name}`
             : 'No posees a ningún agente'}
         </p>
+        {play.possessedAgent && (
+          <button type="button" onClick={play.release}>
+            Dejar de poseer
+          </button>
+        )}
         {play.error && <p role="alert">{play.error}</p>}
       </section>
     </div>

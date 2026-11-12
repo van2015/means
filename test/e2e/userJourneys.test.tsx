@@ -369,18 +369,18 @@ describe('E2E: user journeys across the whole app', () => {
     expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
 
     // --- possess one agent ---
-    const poseerButtons = within(availableAgents).getAllByRole('button', { name: /poseer/i })
+    const poseerButtons = within(availableAgents).getAllByRole('button', { name: /^poseer$/i })
     await user.click(poseerButtons[0])
 
     expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
     expect(screen.queryByText(/no posees a ningún agente/i)).not.toBeInTheDocument()
 
-    // the possessed agent shows its status and the rest are disabled (switching is story #9)
+    // the possessed agent shows its status; the rest keep their buttons (story #9)
     const items = within(availableAgents).getAllByRole('listitem')
     expect(within(items[0]).getByText(/poseído/i)).toBeInTheDocument()
-    const remaining = within(availableAgents).getAllByRole('button', { name: /poseer/i })
+    const remaining = within(availableAgents).getAllByRole('button', { name: /^poseer$/i })
     expect(remaining).toHaveLength(1)
-    expect(remaining[0]).toBeDisabled()
+    expect(remaining[0]).toBeEnabled()
 
     // --- possession survives switching to design mode and back ---
     await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
@@ -398,6 +398,55 @@ describe('E2E: user journeys across the whole app', () => {
 
     expect(screen.getByText(/no hay agentes disponibles/i)).toBeInTheDocument()
     expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /poseer/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^poseer$/i })).not.toBeInTheDocument()
+  })
+
+  it('journey 9: switch the possessed agent and release it', async () => {
+    render(<App stores={stores} />)
+
+    // --- create two agents in design mode ---
+    await user.type(agentNameInput(), 'Panadero')
+    await user.click(createAgentButton())
+    await user.type(agentNameInput(), 'Obrero')
+    await user.click(createAgentButton())
+
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    const availableAgents = screen.getByRole('list', { name: /agentes disponibles/i })
+
+    // no possession yet: no release button
+    expect(screen.queryByRole('button', { name: /dejar de poseer/i })).not.toBeInTheDocument()
+
+    // --- possess Panadero, then switch to Obrero ---
+    const poseerButtons = within(availableAgents).getAllByRole('button', { name: /^poseer$/i })
+    await user.click(poseerButtons[0])
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
+
+    const switchButtons = within(availableAgents).getAllByRole('button', { name: /^poseer$/i })
+    expect(switchButtons).toHaveLength(1)
+    await user.click(switchButtons[0])
+
+    expect(screen.getByText(/poseído: obrero/i)).toBeInTheDocument()
+    expect(screen.queryByText(/poseído: panadero/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /dejar de poseer/i })).toBeInTheDocument()
+
+    // --- switch to design mode and back: the switch persists ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    expect(screen.getByText(/poseído: obrero/i)).toBeInTheDocument()
+
+    // --- release the agent ---
+    await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+    expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dejar de poseer/i })).not.toBeInTheDocument()
+    expect(stores.possessionStore.possessedAgentId()).toBeNull()
+
+    // both agents are poseable again
+    const again = within(screen.getByRole('list', { name: /agentes disponibles/i })).getAllByRole(
+      'button',
+      { name: /^poseer$/i },
+    )
+    expect(again).toHaveLength(2)
+    await user.click(again[0])
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
   })
 })

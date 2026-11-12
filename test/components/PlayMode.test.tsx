@@ -50,7 +50,7 @@ describe('PlayMode', () => {
     expect(within(items[0]).queryByRole('button')).not.toBeInTheDocument()
   })
 
-  it('disables the remaining buttons while an agent is possessed', async () => {
+  it('switches possession when clicking another agent', async () => {
     const user = userEvent.setup()
     stores.agentStore.create({ name: 'Panadero', inventory: [] })
     stores.agentStore.create({ name: 'Obrero', inventory: [] })
@@ -58,12 +58,53 @@ describe('PlayMode', () => {
     render(<PlayMode stores={stores} />)
 
     const list = screen.getByRole('list', { name: /agentes disponibles/i })
-    const buttons = within(list).getAllByRole('button', { name: /poseer/i })
-    await user.click(buttons[0])
+    await user.click(within(list).getAllByRole('button', { name: /^poseer$/i })[0])
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
 
-    const after = within(list).getAllByRole('button', { name: /poseer/i })
+    // the remaining agent keeps its button enabled and switches the possession
+    const after = within(list).getAllByRole('button', { name: /^poseer$/i })
     expect(after).toHaveLength(1)
-    expect(after[0]).toBeDisabled()
+    expect(after[0]).toBeEnabled()
+    await user.click(after[0])
+
+    expect(screen.getByText(/poseído: obrero/i)).toBeInTheDocument()
+    expect(screen.queryByText(/poseído: panadero/i)).not.toBeInTheDocument()
+    expect(stores.possessionStore.possessed()?.name).toBe('Obrero')
+  })
+
+  it('releases the possessed agent with the "Dejar de poseer" button', async () => {
+    const user = userEvent.setup()
+    stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+    render(<PlayMode stores={stores} />)
+
+    // no possession yet: the release button is not shown
+    expect(screen.queryByRole('button', { name: /dejar de poseer/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+    expect(screen.getByRole('button', { name: /dejar de poseer/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+
+    expect(screen.getByText(/no posees a ningún agente/i)).toBeInTheDocument()
+    expect(screen.queryByText(/poseído: panadero/i)).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /dejar de poseer/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^poseer$/i })).toBeInTheDocument()
+    expect(stores.possessionStore.possessedAgentId()).toBeNull()
+  })
+
+  it('can possess the only agent again after releasing it', async () => {
+    const user = userEvent.setup()
+    stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+    render(<PlayMode stores={stores} />)
+
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+    await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+    await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+
+    expect(screen.getByText(/poseído: panadero/i)).toBeInTheDocument()
+    expect(stores.possessionStore.possessed()?.name).toBe('Panadero')
   })
 
   it('keeps the possession in the shared stores across remounts', async () => {
