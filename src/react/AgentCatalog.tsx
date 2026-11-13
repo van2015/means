@@ -43,6 +43,7 @@ export function AgentCatalog({
             <button type="button" onClick={() => onSelectAgentRules(agent.id)}>
               Gestionar reglas
             </button>
+            <span>Recetas por acción: {agent.recipesPerAction}</span>
             <ul>
               {agent.inventory.map((line, index) => (
                 <li key={index}>

@@ -3,6 +3,7 @@ import type { RuleRecipeRef } from '@/domain/agentStore'
 import type { Good, GoodStore } from '@/domain/goodStore'
 import type { PossessionStore } from '@/domain/possessionStore'
 import type { Recipe, RecipeStore } from '@/domain/recipeStore'
+import type { ActivationStrategy, StrategyStore } from '@/domain/strategyStore'
 import { errorMessage } from '@/i18n/errors'
 import { goodName as findGoodName, recipeName as findRecipeName } from './catalogHelpers'
 import { Presenter } from './presenter'
@@ -12,6 +13,7 @@ export class PlayModePresenter extends Presenter {
   private goodStore: GoodStore
   private recipeStore: RecipeStore
   private possessionStore: PossessionStore
+  private strategyStore: StrategyStore
   private errorValue: string | null = null
   private priorityDrafts = new Map<string, string>()
 
@@ -20,12 +22,14 @@ export class PlayModePresenter extends Presenter {
     goodStore: GoodStore
     recipeStore: RecipeStore
     possessionStore: PossessionStore
+    strategyStore: StrategyStore
   }) {
     super()
     this.agentStore = stores.agentStore
     this.goodStore = stores.goodStore
     this.recipeStore = stores.recipeStore
     this.possessionStore = stores.possessionStore
+    this.strategyStore = stores.strategyStore
   }
 
   get agents(): Agent[] {
@@ -50,6 +54,15 @@ export class PlayModePresenter extends Presenter {
 
   get error(): string | null {
     return this.errorValue
+  }
+
+  get strategy(): ActivationStrategy {
+    return this.strategyStore.get()
+  }
+
+  setStrategy(strategy: ActivationStrategy): void {
+    this.strategyStore.set(strategy)
+    this.notify()
   }
 
   /** Display name for a good id, resolved from the store. */
@@ -115,8 +128,12 @@ export class PlayModePresenter extends Presenter {
     if (!agent) return
 
     const result = this.agentStore.produce(agent.id, recipeRef)
-
     this.errorValue = result.ok ? null : errorMessage(result.errors[0])
+
+    // action-driven economy: only a successful player action moves the others
+    if (result.ok && this.strategy === 'POR_ACCIONES') {
+      this.agentStore.runAutomaticRules(this.possessionStore.possessedAgentId())
+    }
     this.notify()
   }
 
@@ -124,6 +141,17 @@ export class PlayModePresenter extends Presenter {
     const executed = this.agentStore.runAutomaticRules(this.possessionStore.possessedAgentId())
 
     // only re-render when the background economy actually changed something
+    if (executed.length > 0) this.notify()
+    return executed.length
+  }
+
+  /**
+   * POR_ACCIONES without possession: nobody plays, so the player pushes the
+   * economy by hand. Everything runs except a possessed agent, if any.
+   */
+  advance(): number {
+    const executed = this.agentStore.runAutomaticRules(this.possessionStore.possessedAgentId())
+
     if (executed.length > 0) this.notify()
     return executed.length
   }

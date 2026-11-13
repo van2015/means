@@ -12,10 +12,13 @@ export type AgentError =
   | { code: 'INVALID_QUANTITY'; goodName: string }
   | { code: 'UNKNOWN_GOOD'; goodName: string }
   | { code: 'AGENT_NAME_EXISTS' }
+  | { code: 'INVALID_RECIPES_PER_ACTION' }
 
 export type AgentDraft = {
   name: string
   inventory: DraftLine[]
+  /** Recipes executed per trigger; omitted ⇒ 1 (the historical behaviour). */
+  recipesPerAction?: number
 }
 
 export type AgentResult = { ok: true; agent: Agent } | { ok: false; errors: AgentError[] }
@@ -63,6 +66,8 @@ export class Agent {
   readonly inventory: InventoryLine[]
   readonly recipes: Recipe[]
   readonly rules: Rule[]
+  /** Recipes this agent runs per trigger (tick or player action). */
+  readonly recipesPerAction: number
 
   constructor(
     id: string,
@@ -70,12 +75,14 @@ export class Agent {
     inventory: InventoryLine[],
     recipes: Recipe[] = [],
     rules: Rule[] = [],
+    recipesPerAction = 1,
   ) {
     this.id = id
     this.name = name
     this.inventory = inventory
     this.recipes = recipes
     this.rules = rules
+    this.recipesPerAction = recipesPerAction
   }
 
   has(good: Good, quantity: number): boolean {
@@ -89,7 +96,18 @@ export class Agent {
   }
 }
 
-export function validateAgent(name: string, inventory: DraftLine[]): AgentError[] {
+export const DEFAULT_RECIPES_PER_ACTION = 1
+
+/** The effective value of the draft field, defaulting to the historical 1. */
+export function recipesPerActionOf(draft: Pick<AgentDraft, 'recipesPerAction'>): number {
+  return draft.recipesPerAction ?? DEFAULT_RECIPES_PER_ACTION
+}
+
+export function validateAgent(
+  name: string,
+  inventory: DraftLine[],
+  recipesPerAction: number,
+): AgentError[] {
   const errors: AgentError[] = []
 
   if (name.trim() === '') {
@@ -100,6 +118,10 @@ export function validateAgent(name: string, inventory: DraftLine[]): AgentError[
     if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
     }
+  }
+
+  if (!Number.isInteger(recipesPerAction) || recipesPerAction < 1) {
+    errors.push({ code: 'INVALID_RECIPES_PER_ACTION' })
   }
 
   return errors

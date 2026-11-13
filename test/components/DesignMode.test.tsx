@@ -17,6 +17,7 @@ import {
   agentRecipeNameInput,
   agentRecipeOutputGoodName,
   agentRecipeOutputQuantity,
+  agentRecipesPerActionInput,
   createAgentButton,
   deleteButton,
   editButton,
@@ -387,6 +388,45 @@ describe('DesignMode', () => {
     const agentCatalog = withinAgentCatalog()
     expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
     expect(agentCatalog.getByText(/harina: 10/i)).toBeInTheDocument()
+    expect(agentCatalog.getByText(/recetas por acción: 1/i)).toBeInTheDocument()
+  })
+
+  it('creates an agent with a custom recipes per action and shows it in the catalog', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.clear(agentRecipesPerActionInput())
+    await user.type(agentRecipesPerActionInput(), '3')
+
+    await user.click(createAgentButton())
+
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.getByText('Panadero')).toBeInTheDocument()
+    expect(agentCatalog.getByText(/recetas por acción: 3/i)).toBeInTheDocument()
+    // the form resets for the next agent
+    expect(agentRecipesPerActionInput()).toHaveValue(1)
+
+    const agent = stores.agentStore.findByName('Panadero')
+    expect(agent.ok).toBe(true)
+    if (agent.ok) expect(agent.agent.recipesPerAction).toBe(3)
+  })
+
+  it('rejects an invalid recipes per action and keeps the catalog unchanged', async () => {
+    const user = userEvent.setup()
+    render(<DesignMode stores={stores} />)
+
+    await user.type(agentNameInput(), 'Panadero')
+    await user.clear(agentRecipesPerActionInput())
+    await user.type(agentRecipesPerActionInput(), '0')
+
+    await user.click(createAgentButton())
+
+    expect(
+      screen.getByText(/las recetas por acción deben ser un número entero mayor que cero/i),
+    ).toBeInTheDocument()
+    expect(withinAgentCatalog().queryByText('Panadero')).not.toBeInTheDocument()
+    expect(stores.agentStore.count()).toBe(0)
   })
 
   it('shows validation errors when creating an agent with empty name or invalid quantity', async () => {

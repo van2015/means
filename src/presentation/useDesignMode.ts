@@ -66,12 +66,14 @@ function agentApi(p: AgentPresenter) {
   return {
     agentName: p.name,
     agentInventory: p.inventory,
+    agentRecipesPerAction: p.recipesPerAction,
     agents: p.agents,
     agentErrors: p.errors,
     selectedAgentId: p.selectedAgentId,
     selectedAgentView: p.selectedAgentView,
     selectedAgentRecipes: p.selectedAgentRecipes,
     setAgentName: (name: string) => p.setName(name),
+    setAgentRecipesPerAction: (value: string) => p.setRecipesPerAction(value),
     addAgentInventoryLine: () => p.addInventoryLine(),
     updateAgentInventoryLine: (index: number, field: LineDraftField, value: string) =>
       p.updateInventoryLine(index, field, value),

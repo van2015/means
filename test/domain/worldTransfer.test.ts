@@ -117,6 +117,7 @@ describe('worldTransfer', () => {
         { good: 'Huevos', quantity: 3 },
       ])
       expect(exported.recipes.map((r) => r.name)).toEqual(['Horneado propio'])
+      expect(exported.recipesPerAction).toBe(1)
       expect(exported.rules).toHaveLength(1)
       expect(exported.rules[0]).toEqual({
         recipe: { source: 'catalog', name: 'Pan de harina' },
@@ -127,6 +128,26 @@ describe('worldTransfer', () => {
       expect(result.recipes.map((r) => r.name)).toEqual(['Pan de harina'])
       // closure: goods of inventory + rule condition + recipe lines
       expect(result.goods.map((g) => g.name).sort()).toEqual(['Harina', 'Huevos', 'Pan'])
+    })
+
+    it('exports a custom recipesPerAction with the agent', () => {
+      setupWorld()
+      const fast = stores.agentStore.create({
+        name: 'Rapido',
+        inventory: [],
+        recipesPerAction: 3,
+      })
+      expect(fast.ok).toBe(true)
+      if (!fast.ok) return
+
+      const result = buildExport(stores, {
+        goodIds: [],
+        recipeIds: [],
+        agentIds: [fast.agent.id],
+      })
+
+      expect(result.agents).toHaveLength(1)
+      expect(result.agents[0].recipesPerAction).toBe(3)
     })
 
     it('a rule on an agent-specific recipe does not leak that recipe to the catalog', () => {
@@ -235,6 +256,29 @@ describe('worldTransfer', () => {
       expect(agent.agent.rules[0].priority).toBe(1)
       expect(agent.agent.rules[0].condition.operator).toBe('AT_LEAST')
       expect(agent.agent.rules[0].recipeRef.source).toBe('catalog')
+    })
+
+    it('roundtrip keeps the recipesPerAction of every agent', () => {
+      setupWorld()
+      const fast = stores.agentStore.create({
+        name: 'Rapido',
+        inventory: [],
+        recipesPerAction: 3,
+      })
+      expect(fast.ok).toBe(true)
+      if (!fast.ok) return
+
+      const json = serializeExport(
+        buildExport(stores, { goodIds: [], recipeIds: [], agentIds: [fast.agent.id] }),
+      )
+
+      const fresh = createStores()
+      const result = importWorld(fresh, json)
+      expect(result.ok).toBe(true)
+
+      const imported = fresh.agentStore.findByName('Rapido')
+      expect(imported.ok).toBe(true)
+      if (imported.ok) expect(imported.agent.recipesPerAction).toBe(3)
     })
 
     it('re-importing the same file skips everything (idempotent)', () => {
@@ -535,6 +579,40 @@ describe('worldTransfer', () => {
         code: 'INVALID_STRUCTURE',
         path: 'agents[0].rules[0].recipe',
       })
+    })
+
+    it('rejects an invalid recipesPerAction', () => {
+      const file = {
+        version: WORLD_EXPORT_VERSION,
+        goods: [],
+        recipes: [],
+        agents: [{ name: 'Panadero', inventory: [], recipes: [], rules: [], recipesPerAction: 0 }],
+      }
+      const result = importWorld(stores, JSON.stringify(file))
+
+      expect(result.ok).toBe(false)
+      if (result.ok) return
+      expect(result.errors).toContainEqual({
+        code: 'INVALID_STRUCTURE',
+        path: 'agents[0].recipesPerAction',
+      })
+      expect(stores.agentStore.count()).toBe(0)
+    })
+
+    it('imports an agent without recipesPerAction using the default 1', () => {
+      // files exported before story #18 do not carry the field
+      const file = {
+        version: WORLD_EXPORT_VERSION,
+        goods: [],
+        recipes: [],
+        agents: [{ name: 'Panadero', inventory: [], recipes: [], rules: [] }],
+      }
+      const result = importWorld(stores, JSON.stringify(file))
+
+      expect(result.ok).toBe(true)
+      const agent = stores.agentStore.findByName('Panadero')
+      expect(agent.ok).toBe(true)
+      if (agent.ok) expect(agent.agent.recipesPerAction).toBe(1)
     })
   })
 })

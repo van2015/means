@@ -60,6 +60,10 @@ export function agentNameInput(): HTMLElement {
   return screen.getByLabelText(/nombre del agente/i)
 }
 
+export function agentRecipesPerActionInput(): HTMLElement {
+  return screen.getByLabelText(/recetas por acción/i)
+}
+
 export function addAgentInventoryLineButton(): HTMLElement {
   return screen.getByRole('button', { name: /agregar línea de inventario/i })
 }

@@ -22,6 +22,8 @@ export function errorMessage(error: ValidationError): string {
       return 'El nombre no puede estar vacío'
     case 'AGENT_NAME_EXISTS':
       return 'Ya existe un agente con ese nombre'
+    case 'INVALID_RECIPES_PER_ACTION':
+      return 'Las recetas por acción deben ser un número entero mayor que cero'
     case 'NO_RECIPE':
       return 'Se requiere una receta'
     case 'NO_CONDITION_GOOD':

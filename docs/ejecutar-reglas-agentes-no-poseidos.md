@@ -1,5 +1,7 @@
 # Historia #13 — Ejecutar reglas automáticas de los agentes no poseídos
 
+> **Actualización (#18):** desde la historia #18 el límite por disparador ya no está fijado en 1: cada agente ejecuta hasta sus `recipesPerAction` recetas por tick (por defecto **1**, así que el comportamiento por defecto sigue siendo el descrito aquí). Ver `docs/activacion-por-acciones.md`.
+
 ## Story
 
 Como usuario en modo juego, quiero que los agentes no poseídos ejecuten sus reglas automáticas mientras controlo a otro, para que el resto de la economía siga funcionando.
@@ -20,7 +22,7 @@ Requires: #6, #8
 
 1. **Dominio — `src/domain/agentStore.ts`**: nuevo método `runAutomaticRules(excludeAgentId: string | null): { agentId: string; ruleId: string }[]`:
    - Itera una **copia** del array de agentes (produce sustituye elementos), salta el `excludeAgentId` (la posesión actual, o nadie si es `null`).
-   - Por cada agente: `applicableRules(agent)` de `src/domain/ruleEngine.ts` (ya devuelve las reglas en orden de prioridad porque la tienda las mantiene ordenadas) y, para cada una en orden, intenta `this.produce(agent.id, rule.recipeRef)`; **al primer éxito se detiene para ese agente en ese tick** (una acción por agente por tick) y registra `{ agentId, ruleId }`.
+   - Por cada agente: `applicableRules(agent)` de `src/domain/ruleEngine.ts` (ya devuelve las reglas en orden de prioridad porque la tienda las mantiene ordenadas) y, para cada una en orden, intenta `this.produce(agent.id, rule.recipeRef)`; **al primer éxito se detiene para ese agente en ese tick** (una acción por agente por tick; desde #18: hasta `recipesPerAction`, por defecto 1) y registra `{ agentId, ruleId }`.
    - Los fallos de `produce` (`INSUFFICIENT_GOOD`, `RECIPE_NOT_FOUND` por receta borrada en modo diseño) se ignoran silenciosamente y se pasa a la siguiente regla/agente.
    - Este es el primer uso en producción de `ruleEngine` (hoy solo lo consumen tests).
 2. **Presentador — `src/presentation/playModePresenter.ts`**: método `tick()`:

@@ -1,10 +1,16 @@
 import type { Agent } from '@/domain/agent'
 import type { Stores } from '@/domain/stores'
+import { ACTIVATION_STRATEGIES, type ActivationStrategy } from '@/domain/strategyStore'
 import { usePlayMode } from '@/presentation/usePlayMode'
 import { PossessedAgentPanel } from './PossessedAgentPanel'
 
 type PlayModeProps = {
   stores: Stores
+}
+
+const STRATEGY_LABELS: Record<ActivationStrategy, string> = {
+  TEMPORAL: 'Temporal',
+  POR_ACCIONES: 'Por acciones',
 }
 
 /** Composition root of play mode: possession first, then the possessed agent. */
@@ -15,6 +21,7 @@ export function PlayMode({ stores }: PlayModeProps) {
   return (
     <div>
       <h2>Modo juego</h2>
+      <StrategySection strategy={play.strategy} onChange={play.setStrategy} />
       <PossessionSection
         agents={play.agents}
         possessedAgentId={play.possessedAgentId}
@@ -23,6 +30,11 @@ export function PlayMode({ stores }: PlayModeProps) {
         onPossess={play.possess}
         onRelease={play.release}
       />
+      {play.strategy === 'POR_ACCIONES' && !possessed && (
+        <button type="button" onClick={play.advance}>
+          Avanzar
+        </button>
+      )}
       {possessed && (
         <PossessedAgentPanel
           agent={possessed}
@@ -36,6 +48,31 @@ export function PlayMode({ stores }: PlayModeProps) {
         />
       )}
     </div>
+  )
+}
+
+type StrategySectionProps = {
+  strategy: ActivationStrategy
+  onChange: (strategy: ActivationStrategy) => void
+}
+
+function StrategySection({ strategy, onChange }: StrategySectionProps) {
+  return (
+    <fieldset>
+      <legend>Estrategia de activación</legend>
+      {ACTIVATION_STRATEGIES.map((value) => (
+        <label key={value}>
+          <input
+            type="radio"
+            name="activation-strategy"
+            value={value}
+            checked={strategy === value}
+            onChange={() => onChange(value)}
+          />
+          {STRATEGY_LABELS[value]}
+        </label>
+      ))}
+    </fieldset>
   )
 }
 

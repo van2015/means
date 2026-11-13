@@ -393,4 +393,186 @@ describe('PlayModePresenter', () => {
       expect(ruleId).toBeTruthy()
     })
   })
+
+  describe('activation strategy', () => {
+    let recipeId: string
+    let flourId: string
+    let panId: string
+    let playerId: string
+    let backgroundId: string
+
+    beforeEach(() => {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+
+      const flour = stores.goodStore.findIdByName('Harina')
+      const pan = stores.goodStore.findIdByName('Pan')
+      expect(flour.ok && pan.ok).toBe(true)
+      if (!flour.ok || !pan.ok) return
+      flourId = flour.id
+      panId = pan.id
+
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+      recipeId = recipe.recipe.id
+
+      const player = stores.agentStore.create({
+        name: 'Jugador',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      const background = stores.agentStore.create({
+        name: 'Fondo',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+        recipesPerAction: 2,
+      })
+      expect(player.ok && background.ok).toBe(true)
+      if (!player.ok || !background.ok) return
+      playerId = player.agent.id
+      backgroundId = background.agent.id
+
+      const rule = stores.agentStore.addRule(
+        backgroundId,
+        { source: 'catalog', recipeId },
+        { goodId: flourId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      presenter.possess(playerId)
+      presenter.setStrategy('POR_ACCIONES')
+    })
+
+    it('defaults to the temporal strategy and switches', () => {
+      const fresh = new PlayModePresenter(createStores())
+      expect(fresh.strategy).toBe('TEMPORAL')
+
+      expect(presenter.strategy).toBe('POR_ACCIONES')
+    })
+
+    it('notifies subscribers when the strategy changes', () => {
+      let calls = 0
+      presenter.subscribe(() => {
+        calls++
+      })
+
+      presenter.setStrategy('TEMPORAL')
+
+      expect(calls).toBeGreaterThan(0)
+      expect(presenter.strategy).toBe('TEMPORAL')
+    })
+
+    it('drives the background agents after a successful manual action', () => {
+      presenter.produce({ source: 'catalog', recipeId })
+
+      const background = stores.agentStore.findById(backgroundId)
+      expect(background.ok).toBe(true)
+      if (!background.ok) return
+      // recipesPerAction = 2: both rounds re-check the condition
+      expect(background.agent.quantityOf(flourId)).toBe(6)
+      expect(background.agent.quantityOf(panId)).toBe(2)
+
+      // the possessed agent only did its manual action
+      const player = stores.agentStore.findById(playerId)
+      expect(player.ok).toBe(true)
+      if (!player.ok) return
+      expect(player.agent.quantityOf(flourId)).toBe(8)
+      expect(player.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('does not drive the background agents when the manual action fails', () => {
+      const poor = stores.agentStore.create({ name: 'Pobre', inventory: [] })
+      expect(poor.ok).toBe(true)
+      if (!poor.ok) return
+      presenter.possess(poor.agent.id)
+
+      presenter.produce({ source: 'catalog', recipeId })
+
+      expect(presenter.error).toBe('Falta Harina: necesitas 2, tienes 0')
+      const background = stores.agentStore.findById(backgroundId)
+      expect(background.ok).toBe(true)
+      if (!background.ok) return
+      expect(background.agent.quantityOf(flourId)).toBe(10)
+    })
+
+    it('keeps the manual action alone under the temporal strategy', () => {
+      presenter.setStrategy('TEMPORAL')
+
+      presenter.produce({ source: 'catalog', recipeId })
+
+      const background = stores.agentStore.findById(backgroundId)
+      expect(background.ok).toBe(true)
+      if (!background.ok) return
+      expect(background.agent.quantityOf(flourId)).toBe(10)
+      expect(background.agent.quantityOf(panId)).toBe(0)
+    })
+
+    it('advance runs every agent when nobody is possessed and returns the count', () => {
+      presenter.release()
+
+      const count = presenter.advance()
+
+      expect(count).toBe(2)
+      const background = stores.agentStore.findById(backgroundId)
+      expect(background.ok).toBe(true)
+      if (!background.ok) return
+      expect(background.agent.quantityOf(flourId)).toBe(6)
+      expect(background.agent.quantityOf(panId)).toBe(2)
+    })
+
+    it('advance never runs the rules of the possessed agent', () => {
+      const rule = stores.agentStore.addRule(
+        playerId,
+        { source: 'catalog', recipeId },
+        { goodId: flourId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      const count = presenter.advance()
+
+      // only the background agent ran its two rounds
+      expect(count).toBe(2)
+      const player = stores.agentStore.findById(playerId)
+      expect(player.ok).toBe(true)
+      if (!player.ok) return
+      expect(player.agent.quantityOf(flourId)).toBe(10)
+    })
+
+    it('advance notifies subscribers only when something was produced', () => {
+      presenter.release()
+      // drain the background agent so its rule stops applying
+      const drained = stores.agentStore.addRecipe(backgroundId, {
+        name: 'Drenar',
+        inputs: [{ goodName: 'Harina', quantity: 10 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(drained.ok).toBe(true)
+      if (!drained.ok) return
+      const drainedResult = stores.agentStore.produce(backgroundId, {
+        source: 'agent',
+        recipeId: drained.recipe.id,
+      })
+      expect(drainedResult.ok).toBe(true)
+
+      let calls = 0
+      presenter.subscribe(() => {
+        calls++
+      })
+
+      expect(presenter.advance()).toBe(0)
+      expect(calls).toBe(0)
+    })
+
+    it('never sets an error when the economy moves on its own', () => {
+      presenter.release()
+      presenter.advance()
+
+      expect(presenter.error).toBeNull()
+    })
+  })
 })

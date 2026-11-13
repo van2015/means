@@ -18,6 +18,7 @@ import {
   agentRecipeNameInput,
   agentRecipeOutputGoodName,
   agentRecipeOutputQuantity,
+  agentRecipesPerActionInput,
   createAgentButton,
   goodNameInput,
   manageAgentRecipesButton,
@@ -897,5 +898,117 @@ describe('E2E: user journeys across the whole app', () => {
     expect(worldB.recipeStore.count()).toBe(1)
     expect(worldB.agentStore.count()).toBe(1)
     expect(worldB.agentStore.all()[0].rules).toHaveLength(1)
+  })
+
+  it('journey 16: pick the action-driven strategy and let it move the other agents', async () => {
+    render(<App stores={stores} />)
+
+    // --- design mode: recipe and two agents configured for 2 recipes per action ---
+    await registerGood('Harina')
+    await registerGood('Pan')
+
+    await user.type(recipeNameInput(), 'Pan de harina')
+    await user.click(addRecipeInputButton())
+    await user.type(recipeInputGoodName(1), 'Harina')
+    await user.type(recipeInputQuantity(1), '2')
+    await user.click(addRecipeOutputButton())
+    await user.type(recipeOutputGoodName(1), 'Pan')
+    await user.type(recipeOutputQuantity(1), '1')
+    await user.click(saveRecipeButton())
+
+    const harina = stores.goodStore.findIdByName('Harina')
+    const pan = stores.goodStore.findIdByName('Pan')
+    const recipe = stores.recipeStore.findByName('Pan de harina')
+    expect(harina.ok && pan.ok && recipe.ok).toBe(true)
+    if (!harina.ok || !pan.ok || !recipe.ok) return
+
+    for (const name of ['Jugador', 'Fondo']) {
+      await user.type(agentNameInput(), name)
+      await user.clear(agentRecipesPerActionInput())
+      await user.type(agentRecipesPerActionInput(), '2')
+      await user.click(addAgentInventoryLineButton())
+      await user.type(agentInventoryGoodName(1), 'Harina')
+      await user.type(agentInventoryQuantity(1), '20')
+      await user.click(createAgentButton())
+    }
+
+    const agentCatalog = withinAgentCatalog()
+    expect(agentCatalog.getAllByText(/recetas por acción: 2/i)).toHaveLength(2)
+
+    const jugador = stores.agentStore.findByName('Jugador')
+    const fondo = stores.agentStore.findByName('Fondo')
+    expect(jugador.ok && fondo.ok).toBe(true)
+    if (!jugador.ok || !fondo.ok) return
+
+    for (const agent of [jugador.agent, fondo.agent]) {
+      const rule = stores.agentStore.addRule(
+        agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harina.id, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+    }
+
+    const flourOf = (agentId: string) => {
+      const agent = stores.agentStore.findById(agentId)
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return -1
+      return agent.agent.quantityOf(harina.id)
+    }
+    const panOf = (agentId: string) => {
+      const agent = stores.agentStore.findById(agentId)
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return -1
+      return agent.agent.quantityOf(pan.id)
+    }
+
+    // --- play mode: choose the action-driven strategy ---
+    await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    await user.click(screen.getByLabelText('Por acciones'))
+    expect(screen.getByLabelText('Por acciones')).toBeChecked()
+    // nobody is possessed: the button is what pushes the economy forward
+    expect(screen.getByRole('button', { name: /^avanzar$/i })).toBeInTheDocument()
+
+    // snapshots: the loop is off from here on, so every change below is ours
+    const jugadorFlour = flourOf(jugador.agent.id)
+    const fondoFlour = flourOf(fondo.agent.id)
+
+    // --- one manual action moves only the background agent (twice) ---
+    const availableAgents = screen.getByRole('list', { name: /agentes disponibles/i })
+    await user.click(within(availableAgents).getAllByRole('button', { name: /^poseer$/i })[0])
+    expect(screen.queryByRole('button', { name: /^avanzar$/i })).not.toBeInTheDocument()
+
+    const catalogRecipes = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+    await user.click(within(catalogRecipes).getByRole('button', { name: /^producir$/i }))
+
+    // the possessed agent only did its manual action; the background one ran twice
+    expect(flourOf(jugador.agent.id)).toBe(jugadorFlour - 2)
+    expect(panOf(jugador.agent.id)).toBe(1)
+    expect(flourOf(fondo.agent.id)).toBe(fondoFlour - 4)
+    expect(panOf(fondo.agent.id)).toBe(2)
+
+    const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    expect(within(inventory).getByText(`Harina: ${jugadorFlour - 2}`)).toBeInTheDocument()
+    expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()
+
+    // --- releasing the possession unlocks Avanzar, which moves everybody ---
+    await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+    expect(screen.getByRole('button', { name: /^avanzar$/i })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /^avanzar$/i }))
+
+    expect(flourOf(jugador.agent.id)).toBe(jugadorFlour - 6)
+    expect(panOf(jugador.agent.id)).toBe(3)
+    expect(flourOf(fondo.agent.id)).toBe(fondoFlour - 8)
+    expect(panOf(fondo.agent.id)).toBe(4)
+
+    // --- back to the temporal strategy: the 1 s loop runs again ---
+    await user.click(screen.getByLabelText('Temporal'))
+    await waitFor(
+      () => {
+        expect(flourOf(fondo.agent.id)).toBeLessThan(fondoFlour - 8)
+      },
+      { timeout: PLAY_TICK_MS * 4 },
+    )
   })
 })

@@ -56,9 +56,11 @@ export function DesignMode({ stores = createStores() }: DesignModeProps) {
       <AgentForm
         name={presenter.agentName}
         inventory={presenter.agentInventory}
+        recipesPerAction={presenter.agentRecipesPerAction}
         errors={presenter.agentErrors}
         goods={presenter.goods}
         onNameChange={presenter.setAgentName}
+        onRecipesPerActionChange={presenter.setAgentRecipesPerAction}
         onAddLine={presenter.addAgentInventoryLine}
         onUpdateLine={presenter.updateAgentInventoryLine}
         onRemoveLine={presenter.removeAgentInventoryLine}

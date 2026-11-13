@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStores, type Stores } from '@/domain/stores'
@@ -658,6 +658,193 @@ describe('PlayMode', () => {
       // no further production after unmount
       expect(after.agent.quantityOf(flourId)).toBe(8)
       expect(after.agent.quantityOf(panId)).toBe(1)
+    })
+  })
+
+  describe('activation strategy', () => {
+    let flourId: string
+    let panId: string
+    let bakerId: string
+    let playerId: string
+
+    /** A background baker limited to 2 rounds and a player with flour. */
+    function setupEconomy() {
+      stores.goodStore.create('Harina')
+      stores.goodStore.create('Pan')
+      const flour = stores.goodStore.findIdByName('Harina')
+      const pan = stores.goodStore.findIdByName('Pan')
+      expect(flour.ok && pan.ok).toBe(true)
+      if (!flour.ok || !pan.ok) return
+      flourId = flour.id
+      panId = pan.id
+
+      const recipe = stores.recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = stores.agentStore.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+        recipesPerAction: 2,
+      })
+      const player = stores.agentStore.create({
+        name: 'Jugador',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+      })
+      expect(baker.ok && player.ok).toBe(true)
+      if (!baker.ok || !player.ok) return
+      bakerId = baker.agent.id
+      playerId = player.agent.id
+
+      const rule = stores.agentStore.addRule(
+        bakerId,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: flourId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+    }
+
+    function flourOf(agentId: string) {
+      const agent = stores.agentStore.findById(agentId)
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return -1
+      return agent.agent.quantityOf(flourId)
+    }
+
+    function panOf(agentId: string) {
+      const agent = stores.agentStore.findById(agentId)
+      expect(agent.ok).toBe(true)
+      if (!agent.ok) return -1
+      return agent.agent.quantityOf(panId)
+    }
+
+    function agentButtons() {
+      const list = screen.getByRole('list', { name: /agentes disponibles/i })
+      return within(list).getAllByRole('button', { name: /^poseer$/i })
+    }
+
+    it('starts with the temporal strategy selected', () => {
+      setupEconomy()
+
+      render(<PlayMode stores={stores} />)
+
+      expect(screen.getByRole('group', { name: /estrategia de activación/i })).toBeInTheDocument()
+      expect(screen.getByLabelText('Temporal')).toBeChecked()
+      expect(screen.getByLabelText('Por acciones')).not.toBeChecked()
+      expect(screen.queryByRole('button', { name: /^avanzar$/i })).not.toBeInTheDocument()
+    })
+
+    it('switches to the action-driven strategy', async () => {
+      const user = userEvent.setup()
+      setupEconomy()
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByLabelText('Por acciones'))
+
+      expect(screen.getByLabelText('Por acciones')).toBeChecked()
+      expect(screen.getByLabelText('Temporal')).not.toBeChecked()
+      expect(stores.strategyStore.get()).toBe('POR_ACCIONES')
+    })
+
+    it('offers Avanzar only without possession under the action-driven strategy', async () => {
+      const user = userEvent.setup()
+      setupEconomy()
+      stores.strategyStore.set('POR_ACCIONES')
+
+      render(<PlayMode stores={stores} />)
+      expect(screen.getByRole('button', { name: /^avanzar$/i })).toBeInTheDocument()
+
+      await user.click(agentButtons()[0])
+      expect(screen.queryByRole('button', { name: /^avanzar$/i })).not.toBeInTheDocument()
+
+      await user.click(screen.getByRole('button', { name: /dejar de poseer/i }))
+      expect(screen.getByRole('button', { name: /^avanzar$/i })).toBeInTheDocument()
+    })
+
+    it('moves the whole economy forward when clicking Avanzar', async () => {
+      const user = userEvent.setup()
+      setupEconomy()
+      stores.strategyStore.set('POR_ACCIONES')
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getByRole('button', { name: /^avanzar$/i }))
+
+      // nobody is possessed: the baker uses its 2 rounds, the player has no rules
+      expect(flourOf(bakerId)).toBe(6)
+      expect(panOf(bakerId)).toBe(2)
+      expect(flourOf(playerId)).toBe(10)
+    })
+
+    it('drives the background agents with a manual action', async () => {
+      const user = userEvent.setup()
+      setupEconomy()
+      stores.strategyStore.set('POR_ACCIONES')
+
+      render(<PlayMode stores={stores} />)
+      // second agent in the list: the player, so the baker stays in the background
+      await user.click(agentButtons()[1])
+
+      const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+      await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+
+      // one manual action for the player, two automatic rounds for the baker
+      expect(flourOf(playerId)).toBe(8)
+      expect(panOf(playerId)).toBe(1)
+      expect(flourOf(bakerId)).toBe(6)
+      expect(panOf(bakerId)).toBe(2)
+    })
+
+    describe('with the game loop', () => {
+      beforeEach(() => {
+        vi.useFakeTimers()
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      it('keeps the loop stopped until the temporal strategy is selected again', () => {
+        setupEconomy()
+        stores.strategyStore.set('POR_ACCIONES')
+
+        render(<PlayMode stores={stores} />)
+        act(() => {
+          vi.advanceTimersByTime(PLAY_TICK_MS * 3)
+        })
+        expect(flourOf(bakerId)).toBe(10)
+
+        fireEvent.click(screen.getByLabelText('Temporal'))
+
+        act(() => {
+          vi.advanceTimersByTime(PLAY_TICK_MS)
+        })
+        // one tick runs the baker's 2 configured rounds
+        expect(flourOf(bakerId)).toBe(6)
+        expect(panOf(bakerId)).toBe(2)
+      })
+
+      it('stops the loop when the action-driven strategy is selected', () => {
+        setupEconomy()
+
+        render(<PlayMode stores={stores} />)
+        act(() => {
+          vi.advanceTimersByTime(PLAY_TICK_MS)
+        })
+        expect(flourOf(bakerId)).toBe(6)
+
+        fireEvent.click(screen.getByLabelText('Por acciones'))
+
+        act(() => {
+          vi.advanceTimersByTime(PLAY_TICK_MS * 3)
+        })
+        expect(flourOf(bakerId)).toBe(6)
+        expect(panOf(bakerId)).toBe(2)
+      })
     })
   })
 })

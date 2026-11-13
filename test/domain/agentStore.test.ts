@@ -125,6 +125,40 @@ describe('AgentStore', () => {
     expect(store.count()).toBe(1)
   })
 
+  it('rejects a recipesPerAction that is not an integer of at least 1', () => {
+    goodStore.create('Harina')
+
+    for (const invalid of [0, -1, 2.5, Number.NaN]) {
+      const result = store.create({
+        name: `Agente ${String(invalid)}`,
+        inventory: [{ goodName: 'Harina', quantity: 1 }],
+        recipesPerAction: invalid,
+      })
+
+      expect(result.ok).toBe(false)
+      if (!result.ok) {
+        expect(result.errors).toContainEqual({ code: 'INVALID_RECIPES_PER_ACTION' })
+      }
+    }
+    expect(store.count()).toBe(0)
+  })
+
+  it('stores recipesPerAction and defaults to 1 when the draft omits it', () => {
+    goodStore.create('Harina')
+
+    const custom = store.create({ name: 'Rapido', inventory: [], recipesPerAction: 4 })
+    const legacy = store.create({ name: 'Tradicional', inventory: [] })
+    expect(custom.ok && legacy.ok).toBe(true)
+
+    const fast = store.findByName('Rapido')
+    const slow = store.findByName('Tradicional')
+    expect(fast.ok && slow.ok).toBe(true)
+    if (!fast.ok || !slow.ok) return
+
+    expect(fast.agent.recipesPerAction).toBe(4)
+    expect(slow.agent.recipesPerAction).toBe(1)
+  })
+
   it('rejects an agent-specific recipe with an empty name', () => {
     goodStore.create('Harina')
     goodStore.create('Pan')
@@ -946,6 +980,177 @@ describe('AgentStore', () => {
       expect(baker.ok).toBe(true)
       if (!baker.ok) return
       expect(baker.agent.quantityOf(harinaId)).toBe(10)
+    })
+
+    it('runs up to recipesPerAction recipes for the agent in one round', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+        recipesPerAction: 3,
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+
+      const rule = store.addRule(
+        baker.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harinaId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+      if (!rule.ok) return
+
+      const executed = store.runAutomaticRules(null)
+
+      // the limit is reached, and the condition is re-checked against the
+      // inventory updated by every previous production
+      expect(executed).toHaveLength(3)
+      expect(executed.every((entry) => entry.ruleId === rule.rule.id)).toBe(true)
+      const after = store.findById(baker.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(4)
+      expect(after.agent.quantityOf(panId)).toBe(3)
+    })
+
+    it('stops before the limit when the condition stops holding', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      // 5 allowed rounds, but flour drops below the threshold after the 2nd
+      const baker = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+        recipesPerAction: 5,
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+
+      const rule = store.addRule(
+        baker.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harinaId, quantity: 8, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toHaveLength(2)
+      const after = store.findById(baker.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(6)
+      expect(after.agent.quantityOf(panId)).toBe(2)
+    })
+
+    it('stops before the limit when the material runs out', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId, panId } = goodIds()
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 3 }],
+        recipesPerAction: 10,
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+
+      // the condition (>= 1) still holds after the first production, but there
+      // is not enough flour for a second one
+      const rule = store.addRule(
+        baker.agent.id,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harinaId, quantity: 1, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      const executed = store.runAutomaticRules(null)
+
+      expect(executed).toHaveLength(1)
+      const after = store.findById(baker.agent.id)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.quantityOf(harinaId)).toBe(1)
+      expect(after.agent.quantityOf(panId)).toBe(1)
+    })
+
+    it('keeps recipesPerAction across recipe additions and productions', () => {
+      goodStore.create('Harina')
+      goodStore.create('Pan')
+      const { harinaId } = goodIds()
+
+      const recipe = recipeStore.create({
+        name: 'Pan de harina',
+        inputs: [{ goodName: 'Harina', quantity: 2 }],
+        outputs: [{ goodName: 'Pan', quantity: 1 }],
+      })
+      expect(recipe.ok).toBe(true)
+      if (!recipe.ok) return
+
+      const baker = store.create({
+        name: 'Panadero',
+        inventory: [{ goodName: 'Harina', quantity: 10 }],
+        recipesPerAction: 3,
+      })
+      expect(baker.ok).toBe(true)
+      if (!baker.ok) return
+      const bakerId = baker.agent.id
+
+      // addRecipe and produce both rebuild the agent entity
+      const added = store.addRecipe(bakerId, {
+        name: 'Drenar',
+        inputs: [{ goodName: 'Pan', quantity: 1 }],
+        outputs: [{ goodName: 'Harina', quantity: 1 }],
+      })
+      expect(added.ok).toBe(true)
+
+      const rule = store.addRule(
+        bakerId,
+        { source: 'catalog', recipeId: recipe.recipe.id },
+        { goodId: harinaId, quantity: 5, operator: 'AT_LEAST' },
+        1,
+      )
+      expect(rule.ok).toBe(true)
+
+      store.runAutomaticRules(null)
+
+      const after = store.findById(bakerId)
+      expect(after.ok).toBe(true)
+      if (!after.ok) return
+      expect(after.agent.recipesPerAction).toBe(3)
+      expect(after.agent.quantityOf(harinaId)).toBe(4)
     })
 
     it('returns an empty list when there is nothing to do', () => {

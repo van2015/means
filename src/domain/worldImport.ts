@@ -1,3 +1,4 @@
+import { DEFAULT_RECIPES_PER_ACTION } from './agent'
 import type { DraftLine } from './recipe'
 import type { Stores } from './stores'
 import {
@@ -251,9 +252,29 @@ function validateAgentShape(
   if (recipes === null) return null
   const rules = validateAgentRulesShape(raw.rules, path, errors)
   if (rules === null) return null
+  const recipesPerAction = validateRecipesPerAction(raw, path, errors)
+  if (recipesPerAction === null) return null
 
   if (errors.length > 0) return null
-  return { name: raw.name, inventory, recipes, rules }
+  return { name: raw.name, inventory, recipes, rules, recipesPerAction }
+}
+
+/**
+ * Absent in files exported before story #18 ⇒ the default 1; present but not
+ * an integer ≥ 1 ⇒ structural error (nothing is imported).
+ */
+function validateRecipesPerAction(
+  raw: Record<string, unknown>,
+  path: string,
+  errors: ImportError[],
+): number | null {
+  const value = raw.recipesPerAction
+  if (value === undefined) return DEFAULT_RECIPES_PER_ACTION
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
+    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipesPerAction` })
+    return null
+  }
+  return value
 }
 
 function validateGoods(raw: unknown[], errors: ImportError[]): { name: string }[] {
@@ -461,6 +482,7 @@ function applyAgents(stores: Stores, agents: ExportedAgent[], summary: ImportSum
     const created = stores.agentStore.create({
       name: agent.name,
       inventory: toDraftLines(agent.inventory),
+      recipesPerAction: agent.recipesPerAction,
     })
     if (!created.ok) continue // unreachable after validation
     summary.agents.added++

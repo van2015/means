@@ -26,6 +26,8 @@ export type ExportedAgent = {
   inventory: ExportedLine[]
   recipes: ExportedRecipe[]
   rules: ExportedRule[]
+  /** Absent in files exported before story #18 ⇒ 1 on import. */
+  recipesPerAction?: number
 }
 
 export type WorldExport = {
@@ -93,7 +95,13 @@ class ExportBuilder {
     const inventory = this.addLines(agent.inventory)
     // the agent's own recipes are exported inside the agent, not in the catalog
     const recipes = agent.recipes.map((recipe) => this.exportRecipe(recipe))
-    this.agents.set(agent.name, { name: agent.name, inventory, recipes, rules })
+    this.agents.set(agent.name, {
+      name: agent.name,
+      inventory,
+      recipes,
+      rules,
+      recipesPerAction: agent.recipesPerAction,
+    })
   }
 
   private addGoodName(name: string): void {

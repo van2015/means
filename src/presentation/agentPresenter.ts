@@ -8,6 +8,7 @@ export class AgentPresenter extends Presenter {
   private agentStore: AgentStore
   private nameValue = ''
   private inventoryValue: LineDraft[] = []
+  private recipesPerActionValue = '1'
   private errorsValue: AgentError[] = []
   private selectedAgentIdValue: string | null = null
   private selectedAgentViewValue: 'recipes' | 'rules' | null = null
@@ -23,6 +24,11 @@ export class AgentPresenter extends Presenter {
 
   get inventory(): LineDraft[] {
     return this.inventoryValue
+  }
+
+  /** Raw draft of "Recetas por acción" (kept as text like the other drafts). */
+  get recipesPerAction(): string {
+    return this.recipesPerActionValue
   }
 
   get errors(): AgentError[] {
@@ -56,6 +62,11 @@ export class AgentPresenter extends Presenter {
     this.notify()
   }
 
+  setRecipesPerAction(value: string): void {
+    this.recipesPerActionValue = value
+    this.notify()
+  }
+
   addInventoryLine(): void {
     this.inventoryValue = [...this.inventoryValue, createLineDraft()]
     this.notify()
@@ -81,6 +92,8 @@ export class AgentPresenter extends Presenter {
         goodName: line.goodName,
         quantity: Number(line.quantity),
       })),
+      // '' and non-numeric drafts become 0/NaN, which validation rejects
+      recipesPerAction: Number(this.recipesPerActionValue),
     })
 
     if (result.ok) {
@@ -107,6 +120,7 @@ export class AgentPresenter extends Presenter {
   private resetForm(): void {
     this.nameValue = ''
     this.inventoryValue = []
+    this.recipesPerActionValue = '1'
     this.errorsValue = []
   }
 }

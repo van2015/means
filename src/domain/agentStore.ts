@@ -1,5 +1,5 @@
 import { generateId } from './id'
-import { Agent, validateAgent, validateRule } from './agent'
+import { Agent, recipesPerActionOf, validateAgent, validateRule } from './agent'
 import type {
   AgentDraft,
   AgentError,
@@ -82,6 +82,7 @@ export class AgentStore {
       })),
       [],
       [],
+      recipesPerActionOf(draft),
     )
     this.agents.push(agent)
     return { ok: true, agent }
@@ -242,6 +243,7 @@ export class AgentStore {
       this.composeInventory(agent, recipe),
       agent.recipes,
       agent.rules,
+      agent.recipesPerAction,
     )
     const index = this.agents.findIndex((a) => a.id === agent.id)
     if (index !== -1) this.agents[index] = updated
@@ -289,6 +291,13 @@ export class AgentStore {
       .filter((line) => line.quantity > 0)
   }
 
+  /**
+   * Runs each agent's automatic rules up to its own `recipesPerAction` limit.
+   * `excludeAgentId` skips the possessed agent (null ⇒ nobody is skipped).
+   * Before every recipe the condition is re-evaluated against the fresh
+   * inventory, so a rule that no longer applies yields to the next priority
+   * and an agent with nothing executable stops early instead of looping.
+   */
   runAutomaticRules(excludeAgentId: string | null): AutomaticProduction[] {
     const executed: AutomaticProduction[] = []
 
@@ -296,18 +305,31 @@ export class AgentStore {
     for (const agent of [...this.agents]) {
       if (agent.id === excludeAgentId) continue
 
-      for (const rule of applicableRules(agent)) {
-        const result = this.produce(agent.id, rule.recipeRef)
-        if (result.ok) {
-          // one action per agent per tick; priority already ordered by the store
-          executed.push({ agentId: agent.id, ruleId: rule.id })
-          break
-        }
-        // insufficient material or a deleted recipe: silently try the next rule
+      let done = 0
+      while (done < agent.recipesPerAction) {
+        // produce() swaps the agent object: re-read it on every round
+        const current = this.findById(agent.id)
+        if (!current.ok) break
+
+        const rule = this.runNextRule(current.agent)
+        if (rule === null) break // no material, condition unmet or recipe deleted
+
+        executed.push({ agentId: agent.id, ruleId: rule.id })
+        done++
       }
     }
 
     return executed
+  }
+
+  /** Executes the highest-priority applicable rule; null when none can run. */
+  private runNextRule(agent: Agent): Rule | null {
+    for (const rule of applicableRules(agent)) {
+      const result = this.produce(agent.id, rule.recipeRef)
+      if (result.ok) return rule
+      // insufficient material or a deleted recipe: silently try the next rule
+    }
+    return null
   }
 
   private resolveRecipe(agent: Agent, recipeRef: Rule['recipeRef']): Recipe | null {
@@ -340,7 +362,7 @@ export class AgentStore {
 
   private validateDraft(draft: AgentDraft): AgentError[] {
     return [
-      ...validateAgent(draft.name, draft.inventory),
+      ...validateAgent(draft.name, draft.inventory, recipesPerActionOf(draft)),
       ...this.unknownGoodErrors(draft.inventory),
     ]
   }
@@ -403,7 +425,14 @@ export class AgentStore {
     const index = this.agents.findIndex((a) => a.id === agent.id)
     if (index === -1) return
 
-    this.agents[index] = new Agent(agent.id, agent.name, agent.inventory, recipes, rules)
+    this.agents[index] = new Agent(
+      agent.id,
+      agent.name,
+      agent.inventory,
+      recipes,
+      rules,
+      agent.recipesPerAction,
+    )
   }
 }
 

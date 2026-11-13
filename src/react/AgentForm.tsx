@@ -7,22 +7,26 @@ import { ValidationErrors } from './ValidationErrors'
 type AgentFormProps = {
   name: string
   inventory: LineDraft[]
+  recipesPerAction: string
   errors: AgentError[]
   goods: Good[]
   onNameChange: (name: string) => void
+  onRecipesPerActionChange: (value: string) => void
   onAddLine: () => void
   onUpdateLine: (index: number, field: LineDraftField, value: string) => void
   onRemoveLine: (index: number) => void
   onSubmit: () => void
 }
 
-/** Creates an agent with its initial inventory. */
+/** Creates an agent with its initial inventory and its action rhythm. */
 export function AgentForm({
   name,
   inventory,
+  recipesPerAction,
   errors,
   goods,
   onNameChange,
+  onRecipesPerActionChange,
   onAddLine,
   onUpdateLine,
   onRemoveLine,
@@ -41,6 +45,16 @@ export function AgentForm({
         <label>
           Nombre del agente
           <input value={name} onChange={(event) => onNameChange(event.target.value)} />
+        </label>
+        <label>
+          Recetas por acción
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={recipesPerAction}
+            onChange={(event) => onRecipesPerActionChange(event.target.value)}
+          />
         </label>
         <RecipeLineForm
           legend="Inventario inicial"
