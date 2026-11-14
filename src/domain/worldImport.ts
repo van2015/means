@@ -64,6 +64,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 type DuplicateKind = Extract<ImportError, { code: 'DUPLICATE_NAME' }>['kind']
 
 /**
+ * Collects the errors of one validation pass. Validators report through it
+ * instead of sharing a bare array, so every step can tell its own failures
+ * apart from the ones already reported by an earlier one.
+ */
+class ValidationContext {
+  private readonly issues: ImportError[] = []
+
+  /** Reports a structural problem found at the given path. */
+  invalid(path: string): void {
+    this.issues.push({ code: 'INVALID_STRUCTURE', path })
+  }
+
+  push(error: ImportError): void {
+    this.issues.push(error)
+  }
+
+  /** Snapshot of the errors reported so far, for a scoped check. */
+  mark(): number {
+    return this.issues.length
+  }
+
+  /** Whether anything was reported after the given snapshot. */
+  failedSince(mark: number): boolean {
+    return this.issues.length > mark
+  }
+
+  hasErrors(): boolean {
+    return this.issues.length > 0
+  }
+
+  all(): ImportError[] {
+    return this.issues
+  }
+}
+
+/**
  * Registers a name inside a section, reporting the duplicate instead. Used by
  * every catalog that must not repeat a name (goods, recipes, agents).
  */
@@ -71,10 +107,10 @@ function registerName(
   names: Set<string>,
   name: string,
   kind: DuplicateKind,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): boolean {
   if (names.has(name)) {
-    errors.push({ code: 'DUPLICATE_NAME', kind, name })
+    ctx.push({ code: 'DUPLICATE_NAME', kind, name })
     return true
   }
   names.add(name)
@@ -90,31 +126,31 @@ function collectUnique<T extends { name: string }>(
   raw: unknown[],
   pathPrefix: string,
   kind: DuplicateKind,
-  validateItem: (item: unknown, path: string, errors: ImportError[]) => T | null,
-  errors: ImportError[],
+  validateItem: (item: unknown, path: string, ctx: ValidationContext) => T | null,
+  ctx: ValidationContext,
 ): T[] {
   const items: T[] = []
   const names = new Set<string>()
   raw.forEach((item, index) => {
-    const value = validateItem(item, `${pathPrefix}[${index}]`, errors)
+    const value = validateItem(item, `${pathPrefix}[${index}]`, ctx)
     if (value === null) return
-    if (registerName(names, value.name, kind, errors)) return
+    if (registerName(names, value.name, kind, ctx)) return
     items.push(value)
   })
   return items
 }
 
-function validateLine(raw: unknown, path: string, errors: ImportError[]): ExportedLine | null {
+function validateLine(raw: unknown, path: string, ctx: ValidationContext): ExportedLine | null {
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   if (typeof raw.good !== 'string' || raw.good.trim() === '') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.good` })
+    ctx.invalid(`${path}.good`)
     return null
   }
   if (typeof raw.quantity !== 'number' || !Number.isFinite(raw.quantity) || raw.quantity <= 0) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.quantity` })
+    ctx.invalid(`${path}.quantity`)
     return null
   }
   return { good: raw.good, quantity: raw.quantity }
@@ -123,40 +159,42 @@ function validateLine(raw: unknown, path: string, errors: ImportError[]): Export
 function validateLines(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
   allowEmpty: boolean,
 ): ExportedLine[] | null {
   if (!Array.isArray(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   if (!allowEmpty && raw.length === 0) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
+  const mark = ctx.mark()
   const lines: ExportedLine[] = []
   raw.forEach((item, index) => {
-    const line = validateLine(item, `${path}[${index}]`, errors)
+    const line = validateLine(item, `${path}[${index}]`, ctx)
     if (line) lines.push(line)
   })
-  return errors.length > 0 ? null : lines
+  // only the errors raised here sink this list, never the outer ones
+  return ctx.failedSince(mark) ? null : lines
 }
 
 function validateRecipeShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): ExportedRecipe | null {
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   if (typeof raw.name !== 'string' || raw.name.trim() === '') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.name` })
+    ctx.invalid(`${path}.name`)
     return null
   }
-  const inputs = validateLines(raw.inputs, `${path}.inputs`, errors, false)
-  const outputs = validateLines(raw.outputs, `${path}.outputs`, errors, false)
+  const inputs = validateLines(raw.inputs, `${path}.inputs`, ctx, false)
+  const outputs = validateLines(raw.outputs, `${path}.outputs`, ctx, false)
   if (inputs === null || outputs === null) return null
   return { name: raw.name, inputs, outputs }
 }
@@ -166,37 +204,41 @@ type ExportedCondition = ExportedRule['condition']
 function validateConditionShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): ExportedCondition | null {
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   const good = raw.good
   const quantity = raw.quantity
   const operator = raw.operator
   if (typeof good !== 'string' || good.trim() === '') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.good` })
+    ctx.invalid(`${path}.good`)
     return null
   }
   if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.quantity` })
+    ctx.invalid(`${path}.quantity`)
     return null
   }
   if (operator !== 'AT_LEAST' && operator !== 'LESS_THAN') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.operator` })
+    ctx.invalid(`${path}.operator`)
     return null
   }
   return { good, quantity, operator }
 }
 
-function validateRuleShape(raw: unknown, path: string, errors: ImportError[]): ExportedRule | null {
+function validateRuleShape(
+  raw: unknown,
+  path: string,
+  ctx: ValidationContext,
+): ExportedRule | null {
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   if (!isRecord(raw.recipe)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipe` })
+    ctx.invalid(`${path}.recipe`)
     return null
   }
   const source = raw.recipe.source
@@ -205,13 +247,13 @@ function validateRuleShape(raw: unknown, path: string, errors: ImportError[]): E
     typeof raw.recipe.name !== 'string' ||
     raw.recipe.name.trim() === ''
   ) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipe` })
+    ctx.invalid(`${path}.recipe`)
     return null
   }
-  const condition = validateConditionShape(raw.condition, `${path}.condition`, errors)
+  const condition = validateConditionShape(raw.condition, `${path}.condition`, ctx)
   if (condition === null) return null
   if (typeof raw.priority !== 'number' || !Number.isFinite(raw.priority)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.priority` })
+    ctx.invalid(`${path}.priority`)
     return null
   }
   return {
@@ -224,27 +266,27 @@ function validateRuleShape(raw: unknown, path: string, errors: ImportError[]): E
 function validateAgentRecipesShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): ExportedRecipe[] | null {
   if (!Array.isArray(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipes` })
+    ctx.invalid(`${path}.recipes`)
     return null
   }
-  return collectUnique(raw, `${path}.recipes`, 'receta', validateRecipeShape, errors)
+  return collectUnique(raw, `${path}.recipes`, 'receta', validateRecipeShape, ctx)
 }
 
 function validateAgentRulesShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): ExportedRule[] | null {
   if (!Array.isArray(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.rules` })
+    ctx.invalid(`${path}.rules`)
     return null
   }
   const rules: ExportedRule[] = []
   raw.forEach((item, index) => {
-    const rule = validateRuleShape(item, `${path}.rules[${index}]`, errors)
+    const rule = validateRuleShape(item, `${path}.rules[${index}]`, ctx)
     if (rule) rules.push(rule)
   })
   return rules
@@ -253,27 +295,29 @@ function validateAgentRulesShape(
 function validateAgentShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): ExportedAgent | null {
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path })
+    ctx.invalid(path)
     return null
   }
   if (typeof raw.name !== 'string' || raw.name.trim() === '') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.name` })
+    ctx.invalid(`${path}.name`)
     return null
   }
-  const inventory = validateLines(raw.inventory, `${path}.inventory`, errors, true)
+  const mark = ctx.mark()
+  const inventory = validateLines(raw.inventory, `${path}.inventory`, ctx, true)
   if (inventory === null) return null
 
-  const recipes = validateAgentRecipesShape(raw.recipes, path, errors)
+  const recipes = validateAgentRecipesShape(raw.recipes, path, ctx)
   if (recipes === null) return null
-  const rules = validateAgentRulesShape(raw.rules, path, errors)
+  const rules = validateAgentRulesShape(raw.rules, path, ctx)
   if (rules === null) return null
-  const recipesPerAction = validateRecipesPerAction(raw, path, errors)
+  const recipesPerAction = validateRecipesPerAction(raw, path, ctx)
   if (recipesPerAction === null) return null
 
-  if (errors.length > 0) return null
+  // drop the agent when one of its own parts failed, whatever else failed before
+  if (ctx.failedSince(mark)) return null
   return { name: raw.name, inventory, recipes, rules, recipesPerAction }
 }
 
@@ -284,12 +328,12 @@ function validateAgentShape(
 function validateRecipesPerAction(
   raw: Record<string, unknown>,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): number | null {
   const value = raw.recipesPerAction
   if (value === undefined) return DEFAULT_RECIPES_PER_ACTION
   if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipesPerAction` })
+    ctx.invalid(`${path}.recipesPerAction`)
     return null
   }
   return value
@@ -298,54 +342,54 @@ function validateRecipesPerAction(
 function validateGoodShape(
   raw: unknown,
   path: string,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): { name: string } | null {
   if (!isRecord(raw) || typeof raw.name !== 'string' || raw.name.trim() === '') {
-    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.name` })
+    ctx.invalid(`${path}.name`)
     return null
   }
   return { name: raw.name }
 }
 
-function validateGoods(raw: unknown[], errors: ImportError[]): { name: string }[] {
-  return collectUnique(raw, 'goods', 'bien', validateGoodShape, errors)
+function validateGoods(raw: unknown[], ctx: ValidationContext): { name: string }[] {
+  return collectUnique(raw, 'goods', 'bien', validateGoodShape, ctx)
 }
 
-function validateNamedRecipes(raw: unknown[], errors: ImportError[]): ExportedRecipe[] {
-  return collectUnique(raw, 'recipes', 'receta', validateRecipeShape, errors)
+function validateNamedRecipes(raw: unknown[], ctx: ValidationContext): ExportedRecipe[] {
+  return collectUnique(raw, 'recipes', 'receta', validateRecipeShape, ctx)
 }
 
-function validateNamedAgents(raw: unknown[], errors: ImportError[]): ExportedAgent[] {
-  return collectUnique(raw, 'agents', 'agente', validateAgentShape, errors)
+function validateNamedAgents(raw: unknown[], ctx: ValidationContext): ExportedAgent[] {
+  return collectUnique(raw, 'agents', 'agente', validateAgentShape, ctx)
 }
 
 function validateWorldExport(raw: unknown): {
   errors: ImportError[]
   value: WorldExport | null
 } {
-  const errors: ImportError[] = []
+  const ctx = new ValidationContext()
 
   if (!isRecord(raw)) {
-    errors.push({ code: 'INVALID_STRUCTURE', path: '' })
-    return { errors, value: null }
+    ctx.invalid('')
+    return { errors: ctx.all(), value: null }
   }
   if (raw.version !== WORLD_EXPORT_VERSION) {
-    errors.push({ code: 'UNSUPPORTED_VERSION', version: raw.version })
-    return { errors, value: null }
+    ctx.push({ code: 'UNSUPPORTED_VERSION', version: raw.version })
+    return { errors: ctx.all(), value: null }
   }
   if (!Array.isArray(raw.goods) || !Array.isArray(raw.recipes) || !Array.isArray(raw.agents)) {
-    if (!Array.isArray(raw.goods)) errors.push({ code: 'INVALID_STRUCTURE', path: 'goods' })
-    if (!Array.isArray(raw.recipes)) errors.push({ code: 'INVALID_STRUCTURE', path: 'recipes' })
-    if (!Array.isArray(raw.agents)) errors.push({ code: 'INVALID_STRUCTURE', path: 'agents' })
-    return { errors, value: null }
+    if (!Array.isArray(raw.goods)) ctx.invalid('goods')
+    if (!Array.isArray(raw.recipes)) ctx.invalid('recipes')
+    if (!Array.isArray(raw.agents)) ctx.invalid('agents')
+    return { errors: ctx.all(), value: null }
   }
 
-  const goods = validateGoods(raw.goods, errors)
-  const recipes = validateNamedRecipes(raw.recipes, errors)
-  const agents = validateNamedAgents(raw.agents, errors)
+  const goods = validateGoods(raw.goods, ctx)
+  const recipes = validateNamedRecipes(raw.recipes, ctx)
+  const agents = validateNamedAgents(raw.agents, ctx)
 
-  if (errors.length > 0) return { errors, value: null }
-  return { errors, value: { version: WORLD_EXPORT_VERSION, goods, recipes, agents } }
+  if (ctx.hasErrors()) return { errors: ctx.all(), value: null }
+  return { errors: [], value: { version: WORLD_EXPORT_VERSION, goods, recipes, agents } }
 }
 
 type ReferenceContext = {
@@ -378,11 +422,11 @@ function checkLines(
   source: 'receta' | 'agente',
   sourceName: string,
   context: ReferenceContext,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): void {
   for (const line of lines) {
     if (!context.hasGood(line.good)) {
-      errors.push(missingReference('bien', line.good, source, sourceName))
+      ctx.push(missingReference('bien', line.good, source, sourceName))
     }
   }
 }
@@ -390,11 +434,11 @@ function checkLines(
 function validateRecipeReferences(
   recipes: ExportedRecipe[],
   context: ReferenceContext,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): void {
   for (const recipe of recipes) {
-    checkLines(recipe.inputs, 'receta', recipe.name, context, errors)
-    checkLines(recipe.outputs, 'receta', recipe.name, context, errors)
+    checkLines(recipe.inputs, 'receta', recipe.name, context, ctx)
+    checkLines(recipe.outputs, 'receta', recipe.name, context, ctx)
   }
 }
 
@@ -403,44 +447,44 @@ function validateRuleReferences(
   agent: ExportedAgent,
   agentRecipeNames: Set<string>,
   context: ReferenceContext,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): void {
   if (!context.hasGood(rule.condition.good)) {
-    errors.push(missingReference('bien', rule.condition.good, 'agente', agent.name))
+    ctx.push(missingReference('bien', rule.condition.good, 'agente', agent.name))
   }
   const recipeExists =
     rule.recipe.source === 'catalog'
       ? context.hasCatalogRecipe(rule.recipe.name)
       : agentRecipeNames.has(rule.recipe.name)
   if (!recipeExists) {
-    errors.push(missingReference('receta', rule.recipe.name, 'agente', agent.name))
+    ctx.push(missingReference('receta', rule.recipe.name, 'agente', agent.name))
   }
 }
 
 function validateAgentReferences(
   agents: ExportedAgent[],
   context: ReferenceContext,
-  errors: ImportError[],
+  ctx: ValidationContext,
 ): void {
   for (const agent of agents) {
-    checkLines(agent.inventory, 'agente', agent.name, context, errors)
+    checkLines(agent.inventory, 'agente', agent.name, context, ctx)
     for (const recipe of agent.recipes) {
-      checkLines(recipe.inputs, 'receta', recipe.name, context, errors)
-      checkLines(recipe.outputs, 'receta', recipe.name, context, errors)
+      checkLines(recipe.inputs, 'receta', recipe.name, context, ctx)
+      checkLines(recipe.outputs, 'receta', recipe.name, context, ctx)
     }
     const agentRecipeNames = new Set(agent.recipes.map((recipe) => recipe.name))
     for (const rule of agent.rules) {
-      validateRuleReferences(rule, agent, agentRecipeNames, context, errors)
+      validateRuleReferences(rule, agent, agentRecipeNames, context, ctx)
     }
   }
 }
 
 function validateReferences(stores: WorldStores, data: WorldExport): ImportError[] {
-  const errors: ImportError[] = []
+  const ctx = new ValidationContext()
   const context = createReferenceContext(stores, data)
-  validateRecipeReferences(data.recipes, context, errors)
-  validateAgentReferences(data.agents, context, errors)
-  return errors
+  validateRecipeReferences(data.recipes, context, ctx)
+  validateAgentReferences(data.agents, context, ctx)
+  return ctx.all()
 }
 
 function toDraftLines(lines: ExportedLine[]): DraftLine[] {
