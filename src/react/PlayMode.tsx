@@ -63,7 +63,7 @@ function StrategySection({ strategy, onChange }: StrategySectionProps) {
     <fieldset>
       <legend>Estrategia de activación</legend>
       {ACTIVATION_STRATEGIES.map((value) => (
-        <label key={value}>
+        <label key={value} className="check-row">
           <input
             type="radio"
             name="activation-strategy"

@@ -62,7 +62,7 @@ function TransferChecklist<T extends CheckableItem>({
         <ul aria-label={ariaLabel}>
           {items.map((item) => (
             <li key={item.id}>
-              <label>
+              <label className="check-row">
                 <input
                   type="checkbox"
                   checked={selectedIds.includes(item.id)}

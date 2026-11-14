@@ -19,13 +19,17 @@ type RecipeCatalogItemProps = {
 function RecipeCatalogItem({ recipe, goods, onEdit, onDelete }: RecipeCatalogItemProps) {
   return (
     <li>
-      {recipe.name}
-      <button type="button" onClick={() => onEdit(recipe)}>
-        Editar
-      </button>
-      <button type="button" onClick={() => onDelete(recipe.id)}>
-        Eliminar
-      </button>
+      <div className="item-head">
+        <span className="item-name">{recipe.name}</span>
+        <div className="item-actions">
+          <button type="button" onClick={() => onEdit(recipe)}>
+            Editar
+          </button>
+          <button type="button" onClick={() => onDelete(recipe.id)}>
+            Eliminar
+          </button>
+        </div>
+      </div>
       <ul>
         {recipe.inputs.map((line, index) => (
           <li key={index}>

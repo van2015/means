@@ -36,14 +36,18 @@ export function AgentCatalog({
       <ul>
         {agents.map((agent) => (
           <li key={agent.id}>
-            {agent.name}
-            <button type="button" onClick={() => onSelectAgent(agent.id)}>
-              Gestionar recetas
-            </button>
-            <button type="button" onClick={() => onSelectAgentRules(agent.id)}>
-              Gestionar reglas
-            </button>
-            <span>Recetas por acción: {agent.recipesPerAction}</span>
+            <div className="item-head">
+              <span className="item-name">{agent.name}</span>
+              <span className="item-meta">Recetas por acción: {agent.recipesPerAction}</span>
+              <div className="item-actions">
+                <button type="button" onClick={() => onSelectAgent(agent.id)}>
+                  Gestionar recetas
+                </button>
+                <button type="button" onClick={() => onSelectAgentRules(agent.id)}>
+                  Gestionar reglas
+                </button>
+              </div>
+            </div>
             <ul>
               {agent.inventory.map((line, index) => (
                 <li key={index}>

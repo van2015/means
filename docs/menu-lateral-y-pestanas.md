@@ -66,6 +66,18 @@ Requires: #7
    - Journeys 10–16 actualizados: navegación explícita (`openPlayTab` / `openDesignSection`) y `produceFromCatalog()`/`inventoryList()` en el journey 12, que alterna pestañas en cada acción.
 6. **Documentación** — entrada `#19` en `docs/backlog.md` y este documento.
 
+## Visual fixes (revisión con capturas)
+
+Tras probar la UI en un navegador headless (Chromium vía CDP, 7 vistas: las 4 de diseño y 3 de juego) aparecieron tres problemas, uno mío y dos preexistentes:
+
+1. **Todo el contenido caía en la columna de 200 px** (texto desbordado, campos encima): al pasar de `main > div` a `.mode-layout` quité el `grid-column: 1 / -1` del `h2` sin poner su equivalente, así que en la rejilla `200px | 1fr` el título se quedaba en la columna estrecha y `.mode-content` iba debajo, también en la estrecha. **Fix:** `.mode-layout > h2 { grid-column: 1 / -1 }` (el título ocupa la fila 1 entera y menú + paneles comparten la fila 2).
+2. **Radios y checkboxes rotos** (se estiraban y quedaban encima de su texto): las reglas globales `input { width: 100% }` y `label { display: grid }` también afectan a `input[type=radio|checkbox]`. **Fix:** clase `.check-row` (`display: flex; align-items: center`) + `.check-row input[type='checkbox'|'radio'] { width: auto; min-height: auto }` en el selector de estrategia y en las listas de exportación.
+3. **Filas de catálogo desalineadas** (nombre, botones y "Recetas por acción" fluyendo en línea y envolviéndose a trozos). **Fix:** estructura `.item-head` → `.item-name` + `.item-meta` (a la derecha) + `.item-actions` (grupo de botones que se envuelve junto), en `AgentCatalog` y `RecipeCatalog`.
+
+Mejoras de paso: el fieldset de estrategia ahora usa el mismo estilo de panel que el resto, `h4` tiene tamaño propio (los subtítulos de "Producir" eran más grandes que el `h3`), y las vistas con un solo panel (Bienes, Mundo) o con un catálogo bajo un formulario a ancho completo ocupan toda la fila (`.mode-content > section:only-child, .mode-content > form + section`) en vez de dejar media pantalla vacía.
+
+Comprobación automatizada: en las 7 vistas no hay scroll horizontal ni elementos (`input`, `select`, `button`, `h2/h3`, `label`, `li`) con `scrollWidth > clientWidth`.
+
 ## Out of scope
 
 - Persistir la sección o la pestaña seleccionada al cambiar de modo (se reinician: diseño ⇒ Recetas, panel ⇒ Inventario).

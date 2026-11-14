@@ -88,6 +88,10 @@ h3 {
   font-size: clamp(12px, 1.4vw, 16px);
 }
 
+h4 {
+  font-size: clamp(10px, 1.1vw, 13px);
+}
+
 p {
   margin: 0;
 }
@@ -101,6 +105,12 @@ main {
   display: grid;
   gap: 24px;
   align-items: start;
+}
+
+/* the title always spans the whole row, so the side menu and the panels
+   share the row below instead of the title grabbing the narrow column */
+.mode-layout > h2 {
+  grid-column: 1 / -1;
 }
 
 .design-layout {
@@ -155,8 +165,72 @@ main {
   gap: 16px;
 }
 
+/* a view whose only panel would sit in half the row (or a catalog below a
+   full-width form) takes the whole row instead of leaving a dead half */
+.mode-content > section:only-child,
+.mode-content > form + section {
+  grid-column: 1 / -1;
+}
+
 .mode-content > section h3 {
   margin-bottom: 4px;
+}
+
+/* the play-mode strategy picker is a fieldset, but it is still a panel */
+.mode-content > fieldset {
+  min-width: 0;
+  padding: clamp(16px, 2vw, 24px);
+  background: var(--panel);
+  border: 3px solid var(--border);
+  border-top: 6px solid var(--accent);
+  box-shadow: 6px 6px 0 var(--shadow);
+}
+
+/* checkboxes and radios keep their intrinsic size and sit inline with their
+   text: the global input/label rules would stretch and stack them */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.check-row input[type='checkbox'],
+.check-row input[type='radio'] {
+  flex: none;
+  width: auto;
+  min-height: auto;
+  margin: 0;
+  accent-color: var(--accent-2);
+}
+
+/* header line of a catalog row: identity first, optional metadata pushed to
+   the right, and the action buttons grouped so they wrap together */
+.item-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+/* beats `.mode-content section li button`, which pushes buttons down */
+.item-head .item-actions button {
+  margin: 0;
+  padding: 8px 10px;
+}
+
+.item-name {
+  color: var(--accent);
+}
+
+.item-meta {
+  margin-left: auto;
+  color: var(--muted);
 }
 
 .mode-content > p {
