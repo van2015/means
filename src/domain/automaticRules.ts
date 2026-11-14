@@ -20,21 +20,27 @@ export function runAutomaticRules(
   // iterate over a copy: produce() replaces elements of the store
   for (const agent of [...store.all()]) {
     if (agent.id === excludeAgentId) continue
-
-    let done = 0
-    while (done < agent.recipesPerAction) {
-      // produce() swaps the agent object: re-read it on every round
-      const current = store.findById(agent.id)
-      if (!current.ok) break
-
-      const rule = runNextRule(store, current.agent)
-      if (rule === null) break // no material, condition unmet or recipe deleted
-
-      executed.push({ agentId: agent.id, ruleId: rule.id })
-      done++
-    }
+    executed.push(...runAgentRules(store, agent))
   }
 
+  return executed
+}
+
+/** Runs one agent's rules until its budget or its material runs out. */
+function runAgentRules(store: AgentStore, agent: Agent): AutomaticProduction[] {
+  const executed: AutomaticProduction[] = []
+  let done = 0
+  while (done < agent.recipesPerAction) {
+    // produce() swaps the agent object: re-read it on every round
+    const current = store.findById(agent.id)
+    if (!current.ok) break
+
+    const rule = runNextRule(store, current.agent)
+    if (rule === null) break // no material, condition unmet or recipe deleted
+
+    executed.push({ agentId: agent.id, ruleId: rule.id })
+    done++
+  }
   return executed
 }
 

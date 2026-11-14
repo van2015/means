@@ -13,20 +13,42 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+/** A non-blank string field, or the structural error that replaces it. */
+function requireNonEmptyString(
+  value: unknown,
+  path: string,
+  ctx: ValidationContext,
+): string | null {
+  if (typeof value !== 'string' || value.trim() === '') {
+    ctx.invalid(path)
+    return null
+  }
+  return value
+}
+
+/** A finite, strictly positive number field, or its structural error. */
+function requirePositiveNumber(
+  value: unknown,
+  path: string,
+  ctx: ValidationContext,
+): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    ctx.invalid(path)
+    return null
+  }
+  return value
+}
+
 function validateLine(raw: unknown, path: string, ctx: ValidationContext): ExportedLine | null {
   if (!isRecord(raw)) {
     ctx.invalid(path)
     return null
   }
-  if (typeof raw.good !== 'string' || raw.good.trim() === '') {
-    ctx.invalid(`${path}.good`)
-    return null
-  }
-  if (typeof raw.quantity !== 'number' || !Number.isFinite(raw.quantity) || raw.quantity <= 0) {
-    ctx.invalid(`${path}.quantity`)
-    return null
-  }
-  return { good: raw.good, quantity: raw.quantity }
+  const good = requireNonEmptyString(raw.good, `${path}.good`, ctx)
+  if (good === null) return null
+  const quantity = requirePositiveNumber(raw.quantity, `${path}.quantity`, ctx)
+  if (quantity === null) return null
+  return { good, quantity }
 }
 
 function validateLines(
@@ -62,14 +84,12 @@ function validateRecipeShape(
     ctx.invalid(path)
     return null
   }
-  if (typeof raw.name !== 'string' || raw.name.trim() === '') {
-    ctx.invalid(`${path}.name`)
-    return null
-  }
+  const name = requireNonEmptyString(raw.name, `${path}.name`, ctx)
+  if (name === null) return null
   const inputs = validateLines(raw.inputs, `${path}.inputs`, ctx, false)
   const outputs = validateLines(raw.outputs, `${path}.outputs`, ctx, false)
   if (inputs === null || outputs === null) return null
-  return { name: raw.name, inputs, outputs }
+  return { name, inputs, outputs }
 }
 
 type ExportedCondition = ExportedRule['condition']
@@ -83,22 +103,51 @@ function validateConditionShape(
     ctx.invalid(path)
     return null
   }
-  const good = raw.good
-  const quantity = raw.quantity
+  const good = requireNonEmptyString(raw.good, `${path}.good`, ctx)
+  if (good === null) return null
+  const quantity = requirePositiveNumber(raw.quantity, `${path}.quantity`, ctx)
+  if (quantity === null) return null
   const operator = raw.operator
-  if (typeof good !== 'string' || good.trim() === '') {
-    ctx.invalid(`${path}.good`)
-    return null
-  }
-  if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity <= 0) {
-    ctx.invalid(`${path}.quantity`)
-    return null
-  }
   if (operator !== 'AT_LEAST' && operator !== 'LESS_THAN') {
     ctx.invalid(`${path}.operator`)
     return null
   }
   return { good, quantity, operator }
+}
+
+type ExportedRecipeRef = ExportedRule['recipe']
+
+function validateRecipeRefShape(
+  raw: unknown,
+  path: string,
+  ctx: ValidationContext,
+): ExportedRecipeRef | null {
+  if (!isRecord(raw)) {
+    ctx.invalid(path)
+    return null
+  }
+  const source = raw.source
+  if (
+    (source !== 'catalog' && source !== 'agent') ||
+    typeof raw.name !== 'string' ||
+    raw.name.trim() === ''
+  ) {
+    ctx.invalid(path)
+    return null
+  }
+  return { source, name: raw.name }
+}
+
+function validatePriority(
+  raw: Record<string, unknown>,
+  path: string,
+  ctx: ValidationContext,
+): number | null {
+  if (typeof raw.priority !== 'number' || !Number.isFinite(raw.priority)) {
+    ctx.invalid(`${path}.priority`)
+    return null
+  }
+  return raw.priority
 }
 
 function validateRuleShape(
@@ -110,30 +159,13 @@ function validateRuleShape(
     ctx.invalid(path)
     return null
   }
-  if (!isRecord(raw.recipe)) {
-    ctx.invalid(`${path}.recipe`)
-    return null
-  }
-  const source = raw.recipe.source
-  if (
-    (source !== 'catalog' && source !== 'agent') ||
-    typeof raw.recipe.name !== 'string' ||
-    raw.recipe.name.trim() === ''
-  ) {
-    ctx.invalid(`${path}.recipe`)
-    return null
-  }
+  const recipe = validateRecipeRefShape(raw.recipe, `${path}.recipe`, ctx)
+  if (recipe === null) return null
   const condition = validateConditionShape(raw.condition, `${path}.condition`, ctx)
   if (condition === null) return null
-  if (typeof raw.priority !== 'number' || !Number.isFinite(raw.priority)) {
-    ctx.invalid(`${path}.priority`)
-    return null
-  }
-  return {
-    recipe: { source, name: raw.recipe.name },
-    condition,
-    priority: raw.priority,
-  }
+  const priority = validatePriority(raw, path, ctx)
+  if (priority === null) return null
+  return { recipe, condition, priority }
 }
 
 function validateAgentRecipesShape(
@@ -165,20 +197,12 @@ function validateAgentRulesShape(
   return rules
 }
 
-function validateAgentShape(
-  raw: unknown,
+/** Inventory, recipes, rules and recipesPerAction of a single agent. */
+function collectAgentParts(
+  raw: Record<string, unknown>,
   path: string,
   ctx: ValidationContext,
-): ExportedAgent | null {
-  if (!isRecord(raw)) {
-    ctx.invalid(path)
-    return null
-  }
-  if (typeof raw.name !== 'string' || raw.name.trim() === '') {
-    ctx.invalid(`${path}.name`)
-    return null
-  }
-  const mark = ctx.mark()
+): Omit<ExportedAgent, 'name'> | null {
   const inventory = validateLines(raw.inventory, `${path}.inventory`, ctx, true)
   if (inventory === null) return null
 
@@ -189,9 +213,28 @@ function validateAgentShape(
   const recipesPerAction = validateRecipesPerAction(raw, path, ctx)
   if (recipesPerAction === null) return null
 
+  return { inventory, recipes, rules, recipesPerAction }
+}
+
+function validateAgentShape(
+  raw: unknown,
+  path: string,
+  ctx: ValidationContext,
+): ExportedAgent | null {
+  if (!isRecord(raw)) {
+    ctx.invalid(path)
+    return null
+  }
+  const name = requireNonEmptyString(raw.name, `${path}.name`, ctx)
+  if (name === null) return null
+
+  const mark = ctx.mark()
+  const parts = collectAgentParts(raw, path, ctx)
+  if (parts === null) return null
+
   // drop the agent when one of its own parts failed, whatever else failed before
   if (ctx.failedSince(mark)) return null
-  return { name: raw.name, inventory, recipes, rules, recipesPerAction }
+  return { name, ...parts }
 }
 
 /**
@@ -236,30 +279,40 @@ function validateNamedAgents(raw: unknown[], ctx: ValidationContext): ExportedAg
   return collectUnique(raw, 'agents', 'agente', validateAgentShape, ctx)
 }
 
+/** Checks the payload itself: shape, version and the three catalog arrays. */
+function validateRoot(
+  raw: unknown,
+  ctx: ValidationContext,
+): { goods: unknown[]; recipes: unknown[]; agents: unknown[] } | null {
+  if (!isRecord(raw)) {
+    ctx.invalid('')
+    return null
+  }
+  if (raw.version !== WORLD_EXPORT_VERSION) {
+    ctx.push({ code: 'UNSUPPORTED_VERSION', version: raw.version })
+    return null
+  }
+  if (!Array.isArray(raw.goods) || !Array.isArray(raw.recipes) || !Array.isArray(raw.agents)) {
+    if (!Array.isArray(raw.goods)) ctx.invalid('goods')
+    if (!Array.isArray(raw.recipes)) ctx.invalid('recipes')
+    if (!Array.isArray(raw.agents)) ctx.invalid('agents')
+    return null
+  }
+  return { goods: raw.goods, recipes: raw.recipes, agents: raw.agents }
+}
+
 export function validateWorldExport(raw: unknown): {
   errors: ImportError[]
   value: WorldExport | null
 } {
   const ctx = new ValidationContext()
 
-  if (!isRecord(raw)) {
-    ctx.invalid('')
-    return { errors: ctx.all(), value: null }
-  }
-  if (raw.version !== WORLD_EXPORT_VERSION) {
-    ctx.push({ code: 'UNSUPPORTED_VERSION', version: raw.version })
-    return { errors: ctx.all(), value: null }
-  }
-  if (!Array.isArray(raw.goods) || !Array.isArray(raw.recipes) || !Array.isArray(raw.agents)) {
-    if (!Array.isArray(raw.goods)) ctx.invalid('goods')
-    if (!Array.isArray(raw.recipes)) ctx.invalid('recipes')
-    if (!Array.isArray(raw.agents)) ctx.invalid('agents')
-    return { errors: ctx.all(), value: null }
-  }
+  const root = validateRoot(raw, ctx)
+  if (root === null) return { errors: ctx.all(), value: null }
 
-  const goods = validateGoods(raw.goods, ctx)
-  const recipes = validateNamedRecipes(raw.recipes, ctx)
-  const agents = validateNamedAgents(raw.agents, ctx)
+  const goods = validateGoods(root.goods, ctx)
+  const recipes = validateNamedRecipes(root.recipes, ctx)
+  const agents = validateNamedAgents(root.agents, ctx)
 
   if (ctx.hasErrors()) return { errors: ctx.all(), value: null }
   return { errors: [], value: { version: WORLD_EXPORT_VERSION, goods, recipes, agents } }

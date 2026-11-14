@@ -108,21 +108,22 @@ export function validateAgent(
   recipesPerAction: number,
 ): AgentError[] {
   const errors: AgentError[] = []
-
-  if (name.trim() === '') {
-    errors.push({ code: 'EMPTY_NAME' })
+  if (name.trim() === '') errors.push({ code: 'EMPTY_NAME' })
+  errors.push(...invalidQuantityLines(inventory))
+  if (!Number.isInteger(recipesPerAction) || recipesPerAction < 1) {
+    errors.push({ code: 'INVALID_RECIPES_PER_ACTION' })
   }
+  return errors
+}
 
+/** Inventory lines whose quantity is not a finite, strictly positive number. */
+function invalidQuantityLines(inventory: DraftLine[]): AgentError[] {
+  const errors: AgentError[] = []
   for (const line of inventory) {
     if (!Number.isFinite(line.quantity) || line.quantity <= 0) {
       errors.push({ code: 'INVALID_QUANTITY', goodName: line.goodName })
     }
   }
-
-  if (!Number.isInteger(recipesPerAction) || recipesPerAction < 1) {
-    errors.push({ code: 'INVALID_RECIPES_PER_ACTION' })
-  }
-
   return errors
 }
 
@@ -132,22 +133,11 @@ export function validateRule(
   priority: number,
 ): RuleError[] {
   const errors: RuleError[] = []
-
-  if (recipeId === '') {
-    errors.push({ code: 'NO_RECIPE' })
-  }
-
-  if (condition.goodId.trim() === '') {
-    errors.push({ code: 'NO_CONDITION_GOOD' })
-  }
-
+  if (recipeId === '') errors.push({ code: 'NO_RECIPE' })
+  if (condition.goodId.trim() === '') errors.push({ code: 'NO_CONDITION_GOOD' })
   if (!Number.isFinite(condition.quantity) || condition.quantity <= 0) {
     errors.push({ code: 'INVALID_CONDITION_QUANTITY' })
   }
-
-  if (!Number.isFinite(priority)) {
-    errors.push({ code: 'INVALID_PRIORITY' })
-  }
-
+  if (!Number.isFinite(priority)) errors.push({ code: 'INVALID_PRIORITY' })
   return errors
 }

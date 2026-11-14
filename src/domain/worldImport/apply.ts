@@ -96,23 +96,27 @@ function applyAgents(stores: WorldStores, agents: ExportedAgent[], counter: Impo
       counter.skipped('rules', agent.rules.length)
       continue
     }
-
-    const created = stores.agentStore.create({
-      name: agent.name,
-      inventory: toDraftLines(agent.inventory),
-      recipesPerAction: agent.recipesPerAction,
-    })
-    if (!created.ok) continue // unreachable after validation
-    counter.added('agents')
-
-    const recipeIdByName = applyAgentRecipes(
-      stores.agentStore,
-      created.agent.id,
-      agent.recipes,
-      counter,
-    )
-    applyAgentRules(stores, created.agent.id, agent.rules, recipeIdByName, counter)
+    applyOneAgent(stores, agent, counter)
   }
+}
+
+/** Creates one agent together with its recipes and rules. */
+function applyOneAgent(stores: WorldStores, agent: ExportedAgent, counter: ImportCounter): void {
+  const created = stores.agentStore.create({
+    name: agent.name,
+    inventory: toDraftLines(agent.inventory),
+    recipesPerAction: agent.recipesPerAction,
+  })
+  if (!created.ok) return // unreachable after validation
+  counter.added('agents')
+
+  const recipeIdByName = applyAgentRecipes(
+    stores.agentStore,
+    created.agent.id,
+    agent.recipes,
+    counter,
+  )
+  applyAgentRules(stores, created.agent.id, agent.rules, recipeIdByName, counter)
 }
 
 function applyAgentRecipes(
