@@ -23,6 +23,7 @@ import {
   goodNameInput,
   manageAgentRecipesButton,
   manageAgentRulesButton,
+  openDesignSection,
   recipeInputGoodName,
   recipeInputQuantity,
   recipeNameInput,
@@ -38,8 +39,10 @@ import {
   saveRecipeButton,
   saveRuleButton,
   withinAgentCatalog,
+  withinGoodsCatalog,
   withinRecipeCatalog,
 } from '../helpers/designModeQueries'
+import { openPlayTab } from '../helpers/playModeQueries'
 
 describe('E2E: user journeys across the whole app', () => {
   let stores: Stores
@@ -486,6 +489,7 @@ describe('E2E: user journeys across the whole app', () => {
     const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(inventory).getByText('Harina: 10')).toBeInTheDocument()
 
+    openPlayTab('Recetas')
     expect(screen.getByRole('heading', { name: /recetas de panadero/i })).toBeInTheDocument()
     const recipes = screen.getByRole('list', { name: /recetas del agente poseído/i })
     expect(within(recipes).getByText('Horneado')).toBeInTheDocument()
@@ -501,6 +505,7 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(screen.getByRole('button', { name: /^poseer$/i }))
     const inventoryAgain = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(inventoryAgain).getByText('Harina: 10')).toBeInTheDocument()
+    openPlayTab('Recetas')
     const recipesAgain = screen.getByRole('list', { name: /recetas del agente poseído/i })
     expect(within(recipesAgain).getByText('Horneado')).toBeInTheDocument()
   })
@@ -542,6 +547,7 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
     await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+    openPlayTab('Reglas')
     const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
     let items = within(rules).getAllByRole('listitem')
     expect(items).toHaveLength(2)
@@ -567,6 +573,7 @@ describe('E2E: user journeys across the whole app', () => {
     expect(withinAgentCatalog().getByText(/prioridad: 0/i)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
+    openPlayTab('Reglas')
     const rulesAgain = screen.getByRole('list', { name: /reglas del agente poseído/i })
     const itemsAgain = within(rulesAgain).getAllByRole('listitem')
     expect(itemsAgain[0].textContent).toContain('prioridad: 0')
@@ -599,28 +606,37 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
     await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
-    const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    const produceFromCatalog = () => {
+      openPlayTab('Producir')
+      const list = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
+      return within(list).getByRole('button', { name: /^producir$/i })
+    }
+    const inventoryList = () => {
+      openPlayTab('Inventario')
+      return screen.getByRole('list', { name: /inventario del agente poseído/i })
+    }
 
-    let inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    await user.click(produceFromCatalog())
+
+    let inventory = inventoryList()
     expect(within(inventory).getByText('Harina: 8')).toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()
 
     // --- produce four more times: flour 8 → 6 → 4 → 2 → 0 (line disappears) ---
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    await user.click(produceFromCatalog())
+    await user.click(produceFromCatalog())
+    await user.click(produceFromCatalog())
+    await user.click(produceFromCatalog())
 
-    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    inventory = inventoryList()
     expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 
     // --- one more time: insufficient material, nothing changes ---
-    await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
+    await user.click(produceFromCatalog())
     expect(screen.getByRole('alert')).toHaveTextContent(/falta harina: necesitas 2, tienes 0/i)
-    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    inventory = inventoryList()
     expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
 
@@ -628,7 +644,7 @@ describe('E2E: user journeys across the whole app', () => {
     // (the presenter is recreated on remount, so the alert is gone)
     await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
     await user.click(screen.getByRole('button', { name: /cambiar a modo juego/i }))
-    inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
+    inventory = inventoryList()
     expect(within(inventory).getByText('Pan: 5')).toBeInTheDocument()
     expect(within(inventory).queryByText(/^harina:/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -662,12 +678,14 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
     // no catalog recipes: empty state shown
+    openPlayTab('Producir')
     expect(screen.getByText(/no hay recetas en el catálogo/i)).toBeInTheDocument()
 
     const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
     expect(within(agentList).getByText('Horneado propio')).toBeInTheDocument()
     await user.click(within(agentList).getByRole('button', { name: /^producir$/i }))
 
+    openPlayTab('Inventario')
     const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(inventory).getByText('Harina: 6')).toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 2')).toBeInTheDocument()
@@ -831,6 +849,7 @@ describe('E2E: user journeys across the whole app', () => {
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => undefined)
 
+    openDesignSection('Mundo')
     const transferSection = screen
       .getByRole('heading', { name: /exportar \/ importar mundo/i })
       .closest('section')!
@@ -860,6 +879,7 @@ describe('E2E: user journeys across the whole app', () => {
     render(<App stores={worldB} />)
 
     const file = new File([exportedJson], 'means-mundo.json', { type: 'application/json' })
+    openDesignSection('Mundo')
     const transferSectionB = screen
       .getByRole('heading', { name: /exportar \/ importar mundo/i })
       .closest('section')!
@@ -868,11 +888,9 @@ describe('E2E: user journeys across the whole app', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(/se importaron/i)
 
     // --- verify everything landed in world B's UI ---
-    const goodsCatalog = screen
-      .getByRole('heading', { name: /bienes y servicios/i })
-      .closest('section')!
-    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
-    expect(within(goodsCatalog).getByText('Pan')).toBeInTheDocument()
+    const goodsCatalog = withinGoodsCatalog()
+    expect(goodsCatalog.getByText('Harina')).toBeInTheDocument()
+    expect(goodsCatalog.getByText('Pan')).toBeInTheDocument()
     expect(withinRecipeCatalog().getByText('Pan de harina')).toBeInTheDocument()
     expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
 
@@ -884,6 +902,7 @@ describe('E2E: user journeys across the whole app', () => {
     expect(withinAgentCatalog().getByText(/prioridad: 1/i)).toBeInTheDocument()
 
     // --- re-import: everything is omitted, nothing duplicated ---
+    openDesignSection('Mundo')
     await user.upload(
       within(
         screen.getByRole('heading', { name: /exportar \/ importar mundo/i }).closest('section')!,
@@ -979,6 +998,7 @@ describe('E2E: user journeys across the whole app', () => {
     await user.click(within(availableAgents).getAllByRole('button', { name: /^poseer$/i })[0])
     expect(screen.queryByRole('button', { name: /^avanzar$/i })).not.toBeInTheDocument()
 
+    openPlayTab('Producir')
     const catalogRecipes = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
     await user.click(within(catalogRecipes).getByRole('button', { name: /^producir$/i }))
 
@@ -988,6 +1008,7 @@ describe('E2E: user journeys across the whole app', () => {
     expect(flourOf(fondo.agent.id)).toBe(fondoFlour - 4)
     expect(panOf(fondo.agent.id)).toBe(2)
 
+    openPlayTab('Inventario')
     const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
     expect(within(inventory).getByText(`Harina: ${jugadorFlour - 2}`)).toBeInTheDocument()
     expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()

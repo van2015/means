@@ -26,6 +26,7 @@ The full backlog and detailed user stories live in [/docs/backlog.md](/docs/back
 - **Rule engine:** a small `ruleEngine.ts` evaluates agent rules against inventory; `AgentStore.runAutomaticRules()` applies them per trigger (tick or player action), up to each agent's `recipesPerAction` (default 1), always excluding the possessed agent.
 - **Goods registration:** recipes and agent inventories no longer auto-create goods. Register goods explicitly before referencing them; otherwise validation returns `UNKNOWN_GOOD`.
 - **Unique names:** goods, recipes and agents must have unique names within their own catalogs. Duplicate names return `DUPLICATE_NAME`, `RECIPE_NAME_EXISTS` or `AGENT_NAME_EXISTS`.
+- **Section navigation:** design mode mounts one section at a time behind a side menu (`DesignMode`), and the possessed agent panel shows one block at a time in tabs (`PossessedAgentPanel`). Tests reveal them through the `openDesignSection` / `openPlayTab` helpers.
 
 ## Commands
 

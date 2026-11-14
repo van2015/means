@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStores, type Stores } from '@/domain/stores'
 import { PLAY_TICK_MS } from '@/presentation/usePlayMode'
 import { PlayMode } from '@/react/PlayMode'
+import { openPlayTab } from '../helpers/playModeQueries'
 
 describe('PlayMode', () => {
   let stores: Stores
@@ -191,6 +192,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Recetas')
       const recipes = screen.getByRole('list', { name: /recetas del agente poseído/i })
       expect(within(recipes).getByText('Horneado')).toBeInTheDocument()
       expect(within(recipes).getByText(/insumo: harina: 2/i)).toBeInTheDocument()
@@ -209,6 +211,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Recetas')
       expect(screen.getByText(/este agente no tiene recetas propias/i)).toBeInTheDocument()
       expect(
         screen.queryByRole('list', { name: /recetas del agente poseído/i }),
@@ -319,6 +322,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Reglas')
       expect(screen.getByRole('heading', { name: /reglas de panadero/i })).toBeInTheDocument()
       const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
       const items = within(rules).getAllByRole('listitem')
@@ -336,6 +340,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Reglas')
       expect(screen.getByText(/este agente no tiene reglas automáticas/i)).toBeInTheDocument()
       expect(
         screen.queryByRole('list', { name: /reglas del agente poseído/i }),
@@ -349,6 +354,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Reglas')
       // second rule (priority 2) becomes priority 0
       const inputs = screen.getAllByLabelText(/prioridad de la regla/i)
       expect(inputs).toHaveLength(2)
@@ -372,6 +378,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Reglas')
       const inputs = screen.getAllByLabelText(/prioridad de la regla/i)
       await user.clear(inputs[0])
       await user.click(screen.getAllByRole('button', { name: /guardar prioridad/i })[0])
@@ -396,6 +403,7 @@ describe('PlayMode', () => {
 
       render(<PlayMode stores={stores} />)
       await user.click(screen.getAllByRole('button', { name: /^poseer$/i })[0])
+      openPlayTab('Reglas')
       expect(screen.getByRole('list', { name: /reglas del agente poseído/i })).toBeInTheDocument()
 
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
@@ -419,6 +427,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Reglas')
       const rules = screen.getByRole('list', { name: /reglas del agente poseído/i })
       // both rules point at the same deleted recipe
       const placeholders = within(rules).getAllByText(/\(receta borrada\)/i)
@@ -470,6 +479,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Producir')
       expect(screen.getByRole('heading', { name: /^producir$/i })).toBeInTheDocument()
       const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
       expect(within(catalogList).getByText('Pan de harina')).toBeInTheDocument()
@@ -487,9 +497,11 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Producir')
       const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
       await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
 
+      openPlayTab('Inventario')
       const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
       expect(within(inventory).getByText('Harina: 8')).toBeInTheDocument()
       expect(within(inventory).getByText('Pan: 1')).toBeInTheDocument()
@@ -503,9 +515,11 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Producir')
       const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
       await user.click(within(agentList).getByRole('button', { name: /^producir$/i }))
 
+      openPlayTab('Inventario')
       const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
       expect(within(inventory).getByText('Harina: 6')).toBeInTheDocument()
       expect(within(inventory).getByText('Pan: 2')).toBeInTheDocument()
@@ -519,6 +533,7 @@ describe('PlayMode', () => {
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
       // 10 flour: two agent-recipe productions (4 each) leave 2, the third needs 4
+      openPlayTab('Producir')
       const agentList = screen.getByRole('list', { name: /recetas del agente para producir/i })
       const produceAgentRecipe = () =>
         within(agentList).getByRole('button', { name: /^producir$/i })
@@ -528,6 +543,7 @@ describe('PlayMode', () => {
       await user.click(produceAgentRecipe())
 
       expect(screen.getByRole('alert')).toHaveTextContent(/falta harina: necesitas 4, tienes 2/i)
+      openPlayTab('Inventario')
       const inventory = screen.getByRole('list', { name: /inventario del agente poseído/i })
       expect(within(inventory).getByText('Harina: 2')).toBeInTheDocument()
       expect(within(inventory).getByText('Pan: 4')).toBeInTheDocument()
@@ -544,6 +560,7 @@ describe('PlayMode', () => {
       render(<PlayMode stores={stores} />)
       await user.click(screen.getByRole('button', { name: /^poseer$/i }))
 
+      openPlayTab('Producir')
       expect(screen.getByText(/no hay recetas en el catálogo/i)).toBeInTheDocument()
       expect(screen.getByText(/no hay recetas propias para producir/i)).toBeInTheDocument()
     })
@@ -789,6 +806,7 @@ describe('PlayMode', () => {
       // second agent in the list: the player, so the baker stays in the background
       await user.click(agentButtons()[1])
 
+      openPlayTab('Producir')
       const catalogList = screen.getByRole('list', { name: /recetas del catálogo para producir/i })
       await user.click(within(catalogList).getByRole('button', { name: /^producir$/i }))
 
@@ -845,6 +863,50 @@ describe('PlayMode', () => {
         expect(flourOf(bakerId)).toBe(6)
         expect(panOf(bakerId)).toBe(2)
       })
+    })
+  })
+
+  describe('possessed agent panel tabs', () => {
+    it('shows one tab at a time and keeps it when the possessed agent changes', async () => {
+      const user = userEvent.setup()
+      stores.goodStore.create('Harina')
+      stores.agentStore.create({ name: 'Panadero', inventory: [] })
+      stores.agentStore.create({ name: 'Obrero', inventory: [] })
+
+      render(<PlayMode stores={stores} />)
+      await user.click(screen.getAllByRole('button', { name: /^poseer$/i })[0])
+
+      const tablist = screen.getByRole('tablist', { name: /secciones del agente poseído/i })
+      expect(within(tablist).getAllByRole('tab')).toHaveLength(4)
+      expect(within(tablist).getByRole('tab', { name: 'Inventario' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+
+      // only the inventory block is on screen
+      expect(screen.getByRole('heading', { name: /inventario de panadero/i })).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: /recetas de panadero/i }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: /^producir$/i })).not.toBeInTheDocument()
+
+      await user.click(within(tablist).getByRole('tab', { name: 'Reglas' }))
+
+      expect(screen.getByText(/este agente no tiene reglas automáticas/i)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('heading', { name: /inventario de panadero/i }),
+      ).not.toBeInTheDocument()
+      expect(within(tablist).getByRole('tab', { name: 'Reglas' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+
+      // the open tab survives switching the possessed agent
+      await user.click(screen.getByRole('button', { name: /^poseer$/i }))
+      expect(
+        screen.getByRole('tablist', { name: /secciones del agente poseído/i }),
+      ).toBeInTheDocument()
+      expect(screen.getByText(/este agente no tiene reglas automáticas/i)).toBeInTheDocument()
     })
   })
 })

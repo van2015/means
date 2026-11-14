@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { Agent, RuleRecipeRef } from '@/domain/agent'
 import type { Recipe } from '@/domain/recipeStore'
 import { operatorLabel } from '@/presentation/catalogHelpers'
@@ -15,7 +16,19 @@ type PossessedAgentPanelProps = {
   onProduce: (recipeRef: RuleRecipeRef) => void
 }
 
-/** Everything the player can see and do with the agent they possess. */
+type PanelTab = 'inventario' | 'recetas' | 'reglas' | 'producir'
+
+const PANEL_TABS: { id: PanelTab; label: string }[] = [
+  { id: 'inventario', label: 'Inventario' },
+  { id: 'recetas', label: 'Recetas' },
+  { id: 'reglas', label: 'Reglas' },
+  { id: 'producir', label: 'Producir' },
+]
+
+/**
+ * Everything the player can see and do with the agent they possess, split
+ * into tabs so only one block is on screen at a time.
+ */
 export function PossessedAgentPanel({
   agent,
   catalogRecipes,
@@ -26,24 +39,53 @@ export function PossessedAgentPanel({
   onSubmitPriority,
   onProduce,
 }: PossessedAgentPanelProps) {
+  const [tab, setTab] = useState<PanelTab>('inventario')
+
   return (
     <section>
-      <InventorySection agent={agent} goodName={goodName} />
-      <RecipesSection agent={agent} goodName={goodName} />
-      <RulesSection
-        agent={agent}
-        goodName={goodName}
-        recipeLabel={recipeLabel}
-        priorityDraft={priorityDraft}
-        onPriorityChange={onPriorityChange}
-        onSubmitPriority={onSubmitPriority}
-      />
-      <ProduceSection
-        agent={agent}
-        catalogRecipes={catalogRecipes}
-        goodName={goodName}
-        onProduce={onProduce}
-      />
+      <div className="tab-list" role="tablist" aria-label="Secciones del agente poseído">
+        {PANEL_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            id={`tab-${item.id}`}
+            aria-selected={tab === item.id}
+            aria-controls={`panel-${item.id}`}
+            onClick={() => setTab(item.id)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div
+        className="tabpanel"
+        role="tabpanel"
+        id={`panel-${tab}`}
+        aria-labelledby={`tab-${tab}`}
+        tabIndex={0}
+      >
+        {tab === 'inventario' && <InventorySection agent={agent} goodName={goodName} />}
+        {tab === 'recetas' && <RecipesSection agent={agent} goodName={goodName} />}
+        {tab === 'reglas' && (
+          <RulesSection
+            agent={agent}
+            goodName={goodName}
+            recipeLabel={recipeLabel}
+            priorityDraft={priorityDraft}
+            onPriorityChange={onPriorityChange}
+            onSubmitPriority={onSubmitPriority}
+          />
+        )}
+        {tab === 'producir' && (
+          <ProduceSection
+            agent={agent}
+            catalogRecipes={catalogRecipes}
+            goodName={goodName}
+            onProduce={onProduce}
+          />
+        )}
+      </div>
     </section>
   )
 }

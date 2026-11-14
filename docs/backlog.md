@@ -28,3 +28,4 @@ Aplicación de crafting/economía para juegos. Un único usuario alterna entre m
 - [x] **#16** Como usuario en modo diseño, quiero eliminar una línea de entrada o salida al crear o editar una receta, para corregir errores sin tener que empezar de cero. Requires: #1
 - [x] **#17** Como usuario en modo diseño, quiero eliminar una línea del inventario inicial de un agente, para corregir errores sin tener que empezar de cero. Requires: #4
 - [x] **#18** Como usuario en modo juego, quiero elegir la estrategia de activación de los agentes (temporal o por acciones), para decidir cómo avanza la economía. Requires: #6, #8, #12, #13
+- [x] **#19** Como usuario, quiero que las secciones de cada modo estén ordenadas en un menú (lateral en modo diseño, pestañas en el panel del agente poseído), para encontrar cada cosa sin hacer scroll. Requires: #7

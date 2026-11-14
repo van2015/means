@@ -19,34 +19,36 @@ export function PlayMode({ stores }: PlayModeProps) {
   const possessed = play.possessedAgent
 
   return (
-    <div>
+    <div className="mode-layout">
       <h2>Modo juego</h2>
-      <StrategySection strategy={play.strategy} onChange={play.setStrategy} />
-      <PossessionSection
-        agents={play.agents}
-        possessedAgentId={play.possessedAgentId}
-        possessed={possessed}
-        error={play.error}
-        onPossess={play.possess}
-        onRelease={play.release}
-      />
-      {play.strategy === 'POR_ACCIONES' && !possessed && (
-        <button type="button" onClick={play.advance}>
-          Avanzar
-        </button>
-      )}
-      {possessed && (
-        <PossessedAgentPanel
-          agent={possessed}
-          catalogRecipes={play.catalogRecipes}
-          goodName={play.goodName}
-          recipeLabel={play.recipeLabel}
-          priorityDraft={play.priorityDraft}
-          onPriorityChange={play.setPriorityDraft}
-          onSubmitPriority={play.submitPriority}
-          onProduce={play.produce}
+      <div className="mode-content">
+        <StrategySection strategy={play.strategy} onChange={play.setStrategy} />
+        <PossessionSection
+          agents={play.agents}
+          possessedAgentId={play.possessedAgentId}
+          possessed={possessed}
+          error={play.error}
+          onPossess={play.possess}
+          onRelease={play.release}
         />
-      )}
+        {play.strategy === 'POR_ACCIONES' && !possessed && (
+          <button type="button" onClick={play.advance}>
+            Avanzar
+          </button>
+        )}
+        {possessed && (
+          <PossessedAgentPanel
+            agent={possessed}
+            catalogRecipes={play.catalogRecipes}
+            goodName={play.goodName}
+            recipeLabel={play.recipeLabel}
+            priorityDraft={play.priorityDraft}
+            onPriorityChange={play.setPriorityDraft}
+            onSubmitPriority={play.submitPriority}
+            onProduce={play.produce}
+          />
+        )}
+      </div>
     </div>
   )
 }

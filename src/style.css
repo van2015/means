@@ -96,19 +96,39 @@ main {
   min-width: 0;
 }
 
-main > div {
+/* mode shell: title, optional side menu, then the section panels */
+.mode-layout {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
   align-items: start;
 }
 
-main > div > h2 {
-  grid-column: 1 / -1;
+.design-layout {
+  grid-template-columns: 200px minmax(0, 1fr);
 }
 
-main > div > form,
-main > div > section {
+.side-nav {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  position: sticky;
+  top: 16px;
+}
+
+.side-nav button[aria-current='page'] {
+  background: var(--accent-2);
+}
+
+.mode-content {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+  min-width: 0;
+}
+
+.mode-content > form,
+.mode-content > section {
   min-width: 0;
   padding: clamp(16px, 2vw, 24px);
   background: var(--panel);
@@ -117,29 +137,29 @@ main > div > section {
   box-shadow: 6px 6px 0 var(--shadow);
 }
 
-main > div > form {
+.mode-content > form {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
-main > div > form > label,
-main > div > form > button {
+.mode-content > form > label,
+.mode-content > form > button {
   grid-column: 1 / -1;
 }
 
-main > div > section {
+.mode-content > section {
   display: grid;
   align-content: start;
   gap: 16px;
 }
 
-main > div > section h3 {
+.mode-content > section h3 {
   margin-bottom: 4px;
 }
 
-main > div > p {
+.mode-content > p {
   grid-column: 1 / -1;
   padding: 24px;
   color: var(--accent-2);
@@ -148,6 +168,17 @@ main > div > p {
   background: var(--panel);
   border: 3px solid var(--accent);
   box-shadow: 6px 6px 0 var(--shadow);
+}
+
+/* tabs inside the possessed agent panel */
+.tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tab-list button[aria-selected='true'] {
+  background: var(--accent-2);
 }
 
 button {
@@ -299,19 +330,21 @@ ul {
   list-style: none;
 }
 
-main > div > section > ul {
+.mode-content section ul {
   display: grid;
   gap: 10px;
 }
 
-main > div > section > ul > li {
+.mode-content section > ul > li,
+.mode-content .tabpanel > ul > li {
   padding: 10px 12px;
   line-height: 1.35;
   background: rgba(11, 13, 22, 0.25);
   border-left: 4px solid var(--accent-2);
 }
 
-main > div > section > ul > li > ul {
+.mode-content section > ul > li > ul,
+.mode-content .tabpanel > ul > li > ul {
   display: grid;
   gap: 6px;
   padding-left: 14px;
@@ -320,13 +353,12 @@ main > div > section > ul > li > ul {
   border-left: 2px dashed var(--border);
 }
 
-main > div > section li button {
+.mode-content section li button {
   margin: 8px 8px 0 0;
 }
 
-main > div > ul[aria-label='Errores de validación'] {
+.mode-content ul[aria-label='Errores de validación'] {
   display: grid;
-  grid-column: 1 / -1;
   gap: 8px;
   padding: 14px 18px;
   color: var(--danger-text);
@@ -335,7 +367,7 @@ main > div > ul[aria-label='Errores de validación'] {
   box-shadow: 4px 4px 0 var(--shadow);
 }
 
-main > div > ul[aria-label='Errores de validación'] li::before {
+.mode-content ul[aria-label='Errores de validación'] li::before {
   margin-right: 8px;
   color: var(--accent);
   font-family: 'Press Start 2P', 'Courier New', monospace;
@@ -352,12 +384,23 @@ img {
 }
 
 @media (max-width: 900px) {
-  main > div {
+  .mode-content {
     grid-template-columns: 1fr;
   }
 
-  main > div > form {
+  .mode-content > form {
     grid-template-columns: 1fr;
+  }
+
+  .design-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* the side menu becomes a horizontal bar above the panels */
+  .side-nav {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
   }
 }
 

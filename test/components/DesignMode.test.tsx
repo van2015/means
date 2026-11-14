@@ -429,6 +429,44 @@ describe('DesignMode', () => {
     expect(stores.agentStore.count()).toBe(0)
   })
 
+  it('shows only the selected section and switches through the side menu', async () => {
+    const user = userEvent.setup()
+    stores.goodStore.create('Harina')
+    stores.agentStore.create({ name: 'Panadero', inventory: [] })
+
+    render(<DesignMode stores={stores} />)
+
+    const nav = screen.getByRole('navigation', { name: /secciones del diseño/i })
+    expect(within(nav).getAllByRole('button')).toHaveLength(4)
+    expect(within(nav).getByRole('button', { name: 'Recetas' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+
+    // only the recipe section is mounted
+    expect(screen.getByRole('heading', { name: /catálogo de recetas/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /bienes y servicios/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /catálogo de agentes/i })).not.toBeInTheDocument()
+
+    await user.click(within(nav).getByRole('button', { name: 'Bienes' }))
+
+    expect(screen.getByRole('heading', { name: /bienes y servicios/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /catálogo de recetas/i })).not.toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: 'Bienes' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(within(nav).getByRole('button', { name: 'Recetas' })).not.toHaveAttribute('aria-current')
+
+    await user.click(within(nav).getByRole('button', { name: 'Agentes' }))
+    expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /bienes y servicios/i })).not.toBeInTheDocument()
+
+    await user.click(within(nav).getByRole('button', { name: 'Mundo' }))
+    expect(screen.getByRole('heading', { name: /exportar \/ importar mundo/i })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /catálogo de agentes/i })).not.toBeInTheDocument()
+  })
+
   it('shows validation errors when creating an agent with empty name or invalid quantity', async () => {
     const user = userEvent.setup()
     render(<DesignMode stores={stores} />)
@@ -906,7 +944,8 @@ describe('DesignMode', () => {
     expect(recipeCatalog.queryByText('Pan de harina')).not.toBeInTheDocument()
 
     // the rule is still there, now with an explicit placeholder instead of an empty name
-    const rulesList = agentCatalog.getByRole('list', { name: /reglas del agente/i })
+    // (re-opens the agent section: the previous step revealed the recipe catalog)
+    const rulesList = withinAgentCatalog().getByRole('list', { name: /reglas del agente/i })
     expect(within(rulesList).getByText(/\(receta borrada\) —/i)).toBeInTheDocument()
     expect(within(rulesList).queryByText(/^ —/i)).not.toBeInTheDocument()
     // and it remains editable: the user can repoint it

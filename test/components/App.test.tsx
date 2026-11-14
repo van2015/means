@@ -10,6 +10,7 @@ import {
   goodNameInput,
   registerGoodButton,
   withinAgentCatalog,
+  withinGoodsCatalog,
 } from '../helpers/designModeQueries'
 
 describe('App', () => {
@@ -72,10 +73,7 @@ describe('App', () => {
 
     await user.click(screen.getByRole('button', { name: /cambiar a modo diseño/i }))
 
-    const goodsCatalog = screen
-      .getByRole('heading', { name: /bienes y servicios/i })
-      .closest('section')!
-    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
+    expect(withinGoodsCatalog().getByText('Harina')).toBeInTheDocument()
     expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
   })
 
@@ -95,10 +93,7 @@ describe('App', () => {
     first.unmount()
     render(<App />)
 
-    const goodsCatalog = screen
-      .getByRole('heading', { name: /bienes y servicios/i })
-      .closest('section')!
-    expect(within(goodsCatalog).getByText('Harina')).toBeInTheDocument()
+    expect(withinGoodsCatalog().getByText('Harina')).toBeInTheDocument()
     expect(withinAgentCatalog().getByText('Panadero')).toBeInTheDocument()
   })
 
@@ -115,10 +110,7 @@ describe('App', () => {
 
     render(<App />)
 
-    const goodsCatalog = screen
-      .getByRole('heading', { name: /bienes y servicios/i })
-      .closest('section')!
-    expect(within(goodsCatalog).getByText('Trigo')).toBeInTheDocument()
+    expect(withinGoodsCatalog().getByText('Trigo')).toBeInTheDocument()
   })
 
   it('starts empty and does not break when the saved world is corrupt', () => {
@@ -127,9 +119,6 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByRole('heading', { name: /modo diseño/i })).toBeInTheDocument()
-    const goodsCatalog = screen
-      .getByRole('heading', { name: /bienes y servicios/i })
-      .closest('section')!
-    expect(within(goodsCatalog).queryByRole('listitem')).not.toBeInTheDocument()
+    expect(withinGoodsCatalog().queryByRole('listitem')).not.toBeInTheDocument()
   })
 })
