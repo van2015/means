@@ -35,6 +35,18 @@ export class RecipeStore {
     return { ok: true, recipe }
   }
 
+  findById(id: string): FindRecipeResult {
+    const recipe = this.recipes.find((r) => r.id === id)
+    if (recipe === undefined) {
+      return { ok: false, error: 'RECIPE_NOT_FOUND' }
+    }
+    return { ok: true, recipe }
+  }
+
+  names(): string[] {
+    return this.recipes.map((recipe) => recipe.name)
+  }
+
   create(draft: RecipeDraft): RecipeResult {
     const errors = this.validateDraft(draft)
     if (this.nameIsTaken(draft.name)) {

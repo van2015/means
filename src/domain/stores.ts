@@ -12,6 +12,12 @@ export type Stores = {
   strategyStore: StrategyStore
 }
 
+/**
+ * The three catalogs the world import/export touches. The session-only stores
+ * (possession, strategy) are deliberately left out of that contract.
+ */
+export type WorldStores = Pick<Stores, 'goodStore' | 'recipeStore' | 'agentStore'>
+
 export function createStores(): Stores {
   const goodStore = new GoodStore()
   const recipeStore = new RecipeStore(goodStore)

@@ -1,6 +1,8 @@
 import type { Agent, Rule } from './agent'
 import type { Recipe } from './recipe'
-import type { Stores } from './stores'
+import type { GoodStore } from './goodStore'
+import type { RecipeStore } from './recipeStore'
+import type { WorldStores } from './stores'
 
 export const WORLD_EXPORT_VERSION = 1
 
@@ -49,13 +51,15 @@ export type WorldSelection = {
  * is part of the exported payload.
  */
 class ExportBuilder {
-  private stores: Stores
+  private goodStore: GoodStore
+  private recipeStore: RecipeStore
   private goods = new Map<string, { name: string }>()
   private recipes = new Map<string, ExportedRecipe>()
   private agents = new Map<string, ExportedAgent>()
 
-  constructor(stores: Stores) {
-    this.stores = stores
+  constructor(goodStore: GoodStore, recipeStore: RecipeStore) {
+    this.goodStore = goodStore
+    this.recipeStore = recipeStore
   }
 
   build(): WorldExport {
@@ -68,7 +72,7 @@ class ExportBuilder {
   }
 
   addGoodById(goodId: string): void {
-    const result = this.stores.goodStore.get(goodId)
+    const result = this.goodStore.get(goodId)
     if (result.ok) this.addGoodName(result.good.name)
   }
 
@@ -109,7 +113,7 @@ class ExportBuilder {
   }
 
   private goodNameById(goodId: string): string | null {
-    const result = this.stores.goodStore.get(goodId)
+    const result = this.goodStore.get(goodId)
     return result.ok ? result.good.name : null
   }
 
@@ -128,12 +132,16 @@ class ExportBuilder {
   private addRules(agent: Agent): ExportedRule[] {
     const rules: ExportedRule[] = []
     for (const rule of agent.rules) {
-      const recipeName = this.ruleRecipeName(agent, rule)
+      const target = this.resolveRuleRecipe(agent, rule)
+      // a rule pulls its catalog recipe (and its goods) into the export before
+      // the agent's own inventory and recipes, so it is exported first
+      if (target !== null && target.catalog !== null) this.addRecipe(target.catalog)
+
       const conditionGood = this.goodNameById(rule.condition.goodId)
-      if (recipeName === null || conditionGood === null) continue // skip broken rules
+      if (target === null || conditionGood === null) continue // skip broken rules
       this.addGoodName(conditionGood)
       rules.push({
-        recipe: { source: rule.recipeRef.source, name: recipeName },
+        recipe: { source: rule.recipeRef.source, name: target.name },
         condition: {
           good: conditionGood,
           quantity: rule.condition.quantity,
@@ -145,27 +153,28 @@ class ExportBuilder {
     return rules
   }
 
-  private ruleRecipeName(agent: Agent, rule: Rule): string | null {
+  /** The recipe a rule points at: its name, plus the catalog recipe to export. */
+  private resolveRuleRecipe(
+    agent: Agent,
+    rule: Rule,
+  ): { name: string; catalog: Recipe | null } | null {
     if (rule.recipeRef.source === 'agent') {
-      return agent.recipes.find((recipe) => recipe.id === rule.recipeRef.recipeId)?.name ?? null
+      const owned = agent.recipes.find((recipe) => recipe.id === rule.recipeRef.recipeId)
+      return owned === undefined ? null : { name: owned.name, catalog: null }
     }
-    const catalogRecipe = this.stores.recipeStore
-      .all()
-      .find((r) => r.id === rule.recipeRef.recipeId)
-    if (!catalogRecipe) return null
-    this.addRecipe(catalogRecipe)
-    return catalogRecipe.name
+    const result = this.recipeStore.findById(rule.recipeRef.recipeId)
+    return result.ok ? { name: result.recipe.name, catalog: result.recipe } : null
   }
 }
 
-export function buildExport(stores: Stores, selection: WorldSelection): WorldExport {
-  const builder = new ExportBuilder(stores)
+export function buildExport(stores: WorldStores, selection: WorldSelection): WorldExport {
+  const builder = new ExportBuilder(stores.goodStore, stores.recipeStore)
 
   for (const id of selection.goodIds) builder.addGoodById(id)
 
   for (const id of selection.recipeIds) {
-    const recipe = stores.recipeStore.all().find((r) => r.id === id)
-    if (recipe) builder.addRecipe(recipe)
+    const result = stores.recipeStore.findById(id)
+    if (result.ok) builder.addRecipe(result.recipe)
   }
 
   for (const id of selection.agentIds) {

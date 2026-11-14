@@ -1,6 +1,9 @@
 import { DEFAULT_RECIPES_PER_ACTION } from './agent'
+import type { AgentStore } from './agentStore'
+import type { GoodStore } from './goodStore'
+import type { RecipeStore } from './recipeStore'
 import type { DraftLine } from './recipe'
-import type { Stores } from './stores'
+import type { WorldStores } from './stores'
 import {
   WORLD_EXPORT_VERSION,
   type ExportedAgent,
@@ -37,7 +40,7 @@ export type ImportResult =
  * Reads a JSON payload into the world: parse, validate the structure, check
  * that every reference resolves, and only then apply it to the stores.
  */
-export function importWorld(stores: Stores, json: string): ImportResult {
+export function importWorld(stores: WorldStores, json: string): ImportResult {
   let raw: unknown
   try {
     raw = JSON.parse(json)
@@ -350,10 +353,10 @@ type ReferenceContext = {
   hasCatalogRecipe: (name: string) => boolean
 }
 
-function createReferenceContext(stores: Stores, data: WorldExport): ReferenceContext {
-  const worldGoods = new Set(stores.goodStore.all().map((good) => good.name))
+function createReferenceContext(stores: WorldStores, data: WorldExport): ReferenceContext {
+  const worldGoods = new Set(stores.goodStore.names())
   const fileGoods = new Set(data.goods.map((good) => good.name))
-  const worldRecipes = new Set(stores.recipeStore.all().map((recipe) => recipe.name))
+  const worldRecipes = new Set(stores.recipeStore.names())
   const fileRecipes = new Set(data.recipes.map((recipe) => recipe.name))
   return {
     hasGood: (name) => worldGoods.has(name) || fileGoods.has(name),
@@ -432,7 +435,7 @@ function validateAgentReferences(
   }
 }
 
-function validateReferences(stores: Stores, data: WorldExport): ImportError[] {
+function validateReferences(stores: WorldStores, data: WorldExport): ImportError[] {
   const errors: ImportError[] = []
   const context = createReferenceContext(stores, data)
   validateRecipeReferences(data.recipes, context, errors)
@@ -444,38 +447,78 @@ function toDraftLines(lines: ExportedLine[]): DraftLine[] {
   return lines.map((line) => ({ goodName: line.good, quantity: line.quantity }))
 }
 
-function applyGoods(stores: Stores, goods: WorldExport['goods'], summary: ImportSummary): void {
-  for (const good of goods) {
-    if (stores.goodStore.hasNamed(good.name)) {
-      summary.goods.skipped++
-    } else {
-      stores.goodStore.create(good.name)
-      summary.goods.added++
+type ImportKind = keyof ImportSummary
+
+/**
+ * Counts what an import run adds and skips. The apply phase mutates the
+ * counters only through these two methods instead of editing the summary.
+ */
+class ImportCounter {
+  private readonly counts: ImportSummary = {
+    goods: { added: 0, skipped: 0 },
+    recipes: { added: 0, skipped: 0 },
+    agents: { added: 0, skipped: 0 },
+    rules: { added: 0, skipped: 0 },
+  }
+
+  added(kind: ImportKind, count = 1): void {
+    this.counts[kind].added += count
+  }
+
+  skipped(kind: ImportKind, count = 1): void {
+    this.counts[kind].skipped += count
+  }
+
+  toSummary(): ImportSummary {
+    return {
+      goods: { ...this.counts.goods },
+      recipes: { ...this.counts.recipes },
+      agents: { ...this.counts.agents },
+      rules: { ...this.counts.rules },
     }
   }
 }
 
-function applyRecipes(stores: Stores, recipes: ExportedRecipe[], summary: ImportSummary): void {
+function applyGoods(
+  goodStore: GoodStore,
+  goods: WorldExport['goods'],
+  counter: ImportCounter,
+): void {
+  for (const good of goods) {
+    if (goodStore.hasNamed(good.name)) {
+      counter.skipped('goods')
+    } else {
+      goodStore.create(good.name)
+      counter.added('goods')
+    }
+  }
+}
+
+function applyRecipes(
+  recipeStore: RecipeStore,
+  recipes: ExportedRecipe[],
+  counter: ImportCounter,
+): void {
   for (const recipe of recipes) {
-    if (stores.recipeStore.findByName(recipe.name).ok) {
-      summary.recipes.skipped++
+    if (recipeStore.findByName(recipe.name).ok) {
+      counter.skipped('recipes')
       continue
     }
-    stores.recipeStore.create({
+    recipeStore.create({
       name: recipe.name,
       inputs: toDraftLines(recipe.inputs),
       outputs: toDraftLines(recipe.outputs),
     })
-    summary.recipes.added++
+    counter.added('recipes')
   }
 }
 
-function applyAgents(stores: Stores, agents: ExportedAgent[], summary: ImportSummary): void {
+function applyAgents(stores: WorldStores, agents: ExportedAgent[], counter: ImportCounter): void {
   for (const agent of agents) {
     if (stores.agentStore.findByName(agent.name).ok) {
-      summary.agents.skipped++
-      summary.recipes.skipped += agent.recipes.length
-      summary.rules.skipped += agent.rules.length
+      counter.skipped('agents')
+      counter.skipped('recipes', agent.recipes.length)
+      counter.skipped('rules', agent.rules.length)
       continue
     }
 
@@ -485,53 +528,58 @@ function applyAgents(stores: Stores, agents: ExportedAgent[], summary: ImportSum
       recipesPerAction: agent.recipesPerAction,
     })
     if (!created.ok) continue // unreachable after validation
-    summary.agents.added++
+    counter.added('agents')
 
-    const recipeIdByName = applyAgentRecipes(stores, created.agent.id, agent.recipes, summary)
-    applyAgentRules(stores, created.agent.id, agent.rules, recipeIdByName, summary)
+    const recipeIdByName = applyAgentRecipes(
+      stores.agentStore,
+      created.agent.id,
+      agent.recipes,
+      counter,
+    )
+    applyAgentRules(stores, created.agent.id, agent.rules, recipeIdByName, counter)
   }
 }
 
 function applyAgentRecipes(
-  stores: Stores,
+  agentStore: AgentStore,
   agentId: string,
   recipes: ExportedRecipe[],
-  summary: ImportSummary,
+  counter: ImportCounter,
 ): Map<string, string> {
   const recipeIdByName = new Map<string, string>()
   for (const recipe of recipes) {
-    const result = stores.agentStore.addRecipe(agentId, {
+    const result = agentStore.addRecipe(agentId, {
       name: recipe.name,
       inputs: toDraftLines(recipe.inputs),
       outputs: toDraftLines(recipe.outputs),
     })
     if (result.ok) {
       recipeIdByName.set(recipe.name, result.recipe.id)
-      summary.recipes.added++
+      counter.added('recipes')
     }
   }
   return recipeIdByName
 }
 
 function resolveRuleRecipeId(
-  stores: Stores,
+  recipeStore: RecipeStore,
   rule: ExportedRule,
   recipeIdByName: Map<string, string>,
 ): string | null {
   if (rule.recipe.source === 'agent') return recipeIdByName.get(rule.recipe.name) ?? null
-  const catalogRecipe = stores.recipeStore.findByName(rule.recipe.name)
+  const catalogRecipe = recipeStore.findByName(rule.recipe.name)
   return catalogRecipe.ok ? catalogRecipe.recipe.id : null
 }
 
 function applyAgentRules(
-  stores: Stores,
+  stores: WorldStores,
   agentId: string,
   rules: ExportedRule[],
   recipeIdByName: Map<string, string>,
-  summary: ImportSummary,
+  counter: ImportCounter,
 ): void {
   for (const rule of rules) {
-    const recipeId = resolveRuleRecipeId(stores, rule, recipeIdByName)
+    const recipeId = resolveRuleRecipeId(stores.recipeStore, rule, recipeIdByName)
     if (recipeId === null) continue // unreachable after validation
     const good = stores.goodStore.findIdByName(rule.condition.good)
     if (!good.ok) continue // unreachable after validation
@@ -545,21 +593,16 @@ function applyAgentRules(
       },
       rule.priority,
     )
-    if (result.ok) summary.rules.added++
+    if (result.ok) counter.added('rules')
   }
 }
 
-function applyImport(stores: Stores, data: WorldExport): ImportSummary {
-  const summary: ImportSummary = {
-    goods: { added: 0, skipped: 0 },
-    recipes: { added: 0, skipped: 0 },
-    agents: { added: 0, skipped: 0 },
-    rules: { added: 0, skipped: 0 },
-  }
+function applyImport(stores: WorldStores, data: WorldExport): ImportSummary {
+  const counter = new ImportCounter()
 
-  applyGoods(stores, data.goods, summary)
-  applyRecipes(stores, data.recipes, summary)
-  applyAgents(stores, data.agents, summary)
+  applyGoods(stores.goodStore, data.goods, counter)
+  applyRecipes(stores.recipeStore, data.recipes, counter)
+  applyAgents(stores, data.agents, counter)
 
-  return summary
+  return counter.toSummary()
 }

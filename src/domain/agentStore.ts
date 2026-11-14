@@ -332,7 +332,8 @@ export class AgentStore {
     if (recipeRef.source === 'agent') {
       return agent.recipes.find((recipe) => recipe.id === recipeRef.recipeId) ?? null
     }
-    return this.recipeStore.all().find((recipe) => recipe.id === recipeRef.recipeId) ?? null
+    const result = this.recipeStore.findById(recipeRef.recipeId)
+    return result.ok ? result.recipe : null
   }
 
   private validateRuleDraft(

@@ -25,6 +25,10 @@ export class GoodStore {
     return this.goods.some((g) => g.name === name)
   }
 
+  names(): string[] {
+    return this.goods.map((good) => good.name)
+  }
+
   findIdByName(name: string): FindGoodIdResult {
     const id = this.goods.find((g) => g.name === name)?.id
     if (id === undefined) {
