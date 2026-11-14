@@ -30,4 +30,12 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The domain stays small on purpose: short functions, short files.
+    files: ['src/domain/**/*.ts'],
+    rules: {
+      'max-lines-per-function': ['error', { max: 25 }],
+      'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+    },
+  },
 )
