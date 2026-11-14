@@ -11,15 +11,14 @@ import type {
   RuleCondition,
   RuleError,
 } from './agent'
-import { createRecipeEntity, validateRecipe } from './recipe'
+import { validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
+import { buildRecipeFromDraft, resolveDraftLines, unknownGoodLineErrors } from './draftLines'
 import { applicableRules } from './ruleEngine'
 import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
 
 export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: 'AGENT_NOT_FOUND' }
-
-type UnknownGoodError = { code: 'UNKNOWN_GOOD'; goodName: string }
 
 export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
 
@@ -76,10 +75,7 @@ export class AgentStore {
     const agent = new Agent(
       generateId(),
       draft.name,
-      draft.inventory.map((line) => ({
-        goodId: this.goodIdFor(line.goodName),
-        quantity: line.quantity,
-      })),
+      resolveDraftLines(this.goodStore, draft.inventory),
       [],
       [],
       recipesPerActionOf(draft),
@@ -99,7 +95,7 @@ export class AgentStore {
       return { ok: false, errors }
     }
 
-    const recipe = this.buildRecipe(generateId(), draft)
+    const recipe = buildRecipeFromDraft(this.goodStore, generateId(), draft)
     const updatedRecipes = [...agentResult.agent.recipes, recipe]
     this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
     return { ok: true, recipe }
@@ -121,7 +117,7 @@ export class AgentStore {
       return { ok: false, errors }
     }
 
-    const recipe = this.buildRecipe(recipeId, draft)
+    const recipe = buildRecipeFromDraft(this.goodStore, recipeId, draft)
     const updatedRecipes = [...agentResult.agent.recipes]
     updatedRecipes[index] = recipe
     this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
@@ -363,7 +359,7 @@ export class AgentStore {
   private validateDraft(draft: AgentDraft): AgentError[] {
     return [
       ...validateAgent(draft.name, draft.inventory, recipesPerActionOf(draft)),
-      ...this.unknownGoodErrors(draft.inventory),
+      ...unknownGoodLineErrors(this.goodStore, draft.inventory),
     ]
   }
 
@@ -378,7 +374,7 @@ export class AgentStore {
   ): RecipeError[] {
     const errors: RecipeError[] = [
       ...validateRecipe(draft.name, draft.inputs, draft.outputs),
-      ...this.unknownGoodErrors([...draft.inputs, ...draft.outputs]),
+      ...unknownGoodLineErrors(this.goodStore, [...draft.inputs, ...draft.outputs]),
     ]
     if (
       agent.recipes.some((recipe) => recipe.name === draft.name && recipe.id !== excludeRecipeId)
@@ -386,39 +382,6 @@ export class AgentStore {
       errors.push({ code: 'RECIPE_NAME_EXISTS' })
     }
     return errors
-  }
-
-  /** Reports every line whose good is not registered in the good store. */
-  private unknownGoodErrors(lines: { goodName: string }[]): UnknownGoodError[] {
-    const errors: UnknownGoodError[] = []
-    for (const line of lines) {
-      const result = this.goodStore.require(line.goodName)
-      if (!result.ok) errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
-    }
-    return errors
-  }
-
-  private goodIdFor(name: string): string {
-    const result = this.goodStore.require(name)
-    if (!result.ok) {
-      throw new Error(`Unexpected missing good: ${name}`)
-    }
-    return result.good.id
-  }
-
-  private buildRecipe(id: string, draft: RecipeDraft): Recipe {
-    return createRecipeEntity(
-      id,
-      draft.name,
-      draft.inputs.map((line) => ({
-        goodId: this.goodIdFor(line.goodName),
-        quantity: line.quantity,
-      })),
-      draft.outputs.map((line) => ({
-        goodId: this.goodIdFor(line.goodName),
-        quantity: line.quantity,
-      })),
-    )
   }
 
   private replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {

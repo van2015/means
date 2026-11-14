@@ -1,6 +1,7 @@
 import { generateId } from './id'
-import { createRecipeEntity, validateRecipe } from './recipe'
-import type { DraftLine, Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
+import { validateRecipe } from './recipe'
+import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
+import { buildRecipeFromDraft, unknownGoodLineErrors } from './draftLines'
 import type { GoodStore } from './goodStore'
 
 export type FindRecipeResult =
@@ -44,7 +45,7 @@ export class RecipeStore {
       return { ok: false, errors }
     }
 
-    const recipe = this.buildRecipe(generateId(), draft)
+    const recipe = buildRecipeFromDraft(this.goodStore, generateId(), draft)
     this.recipes.push(recipe)
     return { ok: true, recipe }
   }
@@ -64,7 +65,7 @@ export class RecipeStore {
       return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
     }
 
-    const recipe = this.buildRecipe(id, draft)
+    const recipe = buildRecipeFromDraft(this.goodStore, id, draft)
     this.recipes[index] = recipe
     return { ok: true, recipe }
   }
@@ -75,47 +76,12 @@ export class RecipeStore {
 
   private validateDraft(draft: RecipeDraft): RecipeError[] {
     const errors = validateRecipe(draft.name, draft.inputs, draft.outputs)
-    errors.push(...this.validateGoodsExist(draft.inputs))
-    errors.push(...this.validateGoodsExist(draft.outputs))
+    errors.push(...unknownGoodLineErrors(this.goodStore, [...draft.inputs, ...draft.outputs]))
     return errors
   }
 
   private nameIsTaken(name: string, excludeId?: string): boolean {
     return this.recipes.some((recipe) => recipe.name === name && recipe.id !== excludeId)
-  }
-
-  private validateGoodsExist(lines: DraftLine[]): RecipeError[] {
-    const errors: RecipeError[] = []
-    for (const line of lines) {
-      const result = this.goodStore.require(line.goodName)
-      if (!result.ok) {
-        errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
-      }
-    }
-    return errors
-  }
-
-  private buildRecipe(id: string, draft: RecipeDraft): Recipe {
-    return createRecipeEntity(
-      id,
-      draft.name,
-      draft.inputs.map((line) => ({
-        goodId: this.goodIdFor(line.goodName),
-        quantity: line.quantity,
-      })),
-      draft.outputs.map((line) => ({
-        goodId: this.goodIdFor(line.goodName),
-        quantity: line.quantity,
-      })),
-    )
-  }
-
-  private goodIdFor(name: string): string {
-    const result = this.goodStore.require(name)
-    if (!result.ok) {
-      throw new Error(`Unexpected missing good: ${name}`)
-    }
-    return result.good.id
   }
 }
 

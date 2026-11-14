@@ -78,6 +78,29 @@ function registerName(
   return false
 }
 
+/**
+ * Validates every item of a list and keeps the names of the section unique.
+ * Shared by the three catalogs that cannot repeat a name (goods, recipes and
+ * agents, whether they live at the root or inside an agent).
+ */
+function collectUnique<T extends { name: string }>(
+  raw: unknown[],
+  pathPrefix: string,
+  kind: DuplicateKind,
+  validateItem: (item: unknown, path: string, errors: ImportError[]) => T | null,
+  errors: ImportError[],
+): T[] {
+  const items: T[] = []
+  const names = new Set<string>()
+  raw.forEach((item, index) => {
+    const value = validateItem(item, `${pathPrefix}[${index}]`, errors)
+    if (value === null) return
+    if (registerName(names, value.name, kind, errors)) return
+    items.push(value)
+  })
+  return items
+}
+
 function validateLine(raw: unknown, path: string, errors: ImportError[]): ExportedLine | null {
   if (!isRecord(raw)) {
     errors.push({ code: 'INVALID_STRUCTURE', path })
@@ -204,15 +227,7 @@ function validateAgentRecipesShape(
     errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.recipes` })
     return null
   }
-  const recipes: ExportedRecipe[] = []
-  const recipeNames = new Set<string>()
-  raw.forEach((item, index) => {
-    const recipe = validateRecipeShape(item, `${path}.recipes[${index}]`, errors)
-    if (!recipe) return
-    if (registerName(recipeNames, recipe.name, 'receta', errors)) return
-    recipes.push(recipe)
-  })
-  return recipes
+  return collectUnique(raw, `${path}.recipes`, 'receta', validateRecipeShape, errors)
 }
 
 function validateAgentRulesShape(
@@ -277,43 +292,28 @@ function validateRecipesPerAction(
   return value
 }
 
+function validateGoodShape(
+  raw: unknown,
+  path: string,
+  errors: ImportError[],
+): { name: string } | null {
+  if (!isRecord(raw) || typeof raw.name !== 'string' || raw.name.trim() === '') {
+    errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.name` })
+    return null
+  }
+  return { name: raw.name }
+}
+
 function validateGoods(raw: unknown[], errors: ImportError[]): { name: string }[] {
-  const goods: { name: string }[] = []
-  const goodNames = new Set<string>()
-  raw.forEach((item, index) => {
-    const path = `goods[${index}]`
-    if (!isRecord(item) || typeof item.name !== 'string' || item.name.trim() === '') {
-      errors.push({ code: 'INVALID_STRUCTURE', path: `${path}.name` })
-      return
-    }
-    if (registerName(goodNames, item.name, 'bien', errors)) return
-    goods.push({ name: item.name })
-  })
-  return goods
+  return collectUnique(raw, 'goods', 'bien', validateGoodShape, errors)
 }
 
 function validateNamedRecipes(raw: unknown[], errors: ImportError[]): ExportedRecipe[] {
-  const recipes: ExportedRecipe[] = []
-  const recipeNames = new Set<string>()
-  raw.forEach((item, index) => {
-    const recipe = validateRecipeShape(item, `recipes[${index}]`, errors)
-    if (!recipe) return
-    if (registerName(recipeNames, recipe.name, 'receta', errors)) return
-    recipes.push(recipe)
-  })
-  return recipes
+  return collectUnique(raw, 'recipes', 'receta', validateRecipeShape, errors)
 }
 
 function validateNamedAgents(raw: unknown[], errors: ImportError[]): ExportedAgent[] {
-  const agents: ExportedAgent[] = []
-  const agentNames = new Set<string>()
-  raw.forEach((item, index) => {
-    const agent = validateAgentShape(item, `agents[${index}]`, errors)
-    if (!agent) return
-    if (registerName(agentNames, agent.name, 'agente', errors)) return
-    agents.push(agent)
-  })
-  return agents
+  return collectUnique(raw, 'agents', 'agente', validateAgentShape, errors)
 }
 
 function validateWorldExport(raw: unknown): {
