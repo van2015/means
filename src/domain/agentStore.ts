@@ -4,8 +4,6 @@ import type {
   AgentDraft,
   AgentError,
   AgentResult,
-  InventoryLine,
-  ProductionError,
   ProductionResult,
   Rule,
   RuleCondition,
@@ -14,7 +12,9 @@ import type {
 import { validateRecipe } from './recipe'
 import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import { buildRecipeFromDraft, resolveDraftLines, unknownGoodLineErrors } from './draftLines'
-import { applicableRules } from './ruleEngine'
+import { ProductionEngine } from './production'
+import { resolveRecipe } from './recipeRef'
+import { runAutomaticRules as runAgentRules, type AutomaticProduction } from './automaticRules'
 import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
 
@@ -22,16 +22,18 @@ export type FindAgentResult = { ok: true; agent: Agent } | { ok: false; error: '
 
 export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
 
-export type AutomaticProduction = { agentId: string; ruleId: string }
+export type { AutomaticProduction } from './automaticRules'
 
 export class AgentStore {
   private agents: Agent[] = []
   private goodStore: GoodStore
   private recipeStore: RecipeStore
+  private production: ProductionEngine
 
   constructor(goodStore: GoodStore, recipeStore: RecipeStore) {
     this.goodStore = goodStore
     this.recipeStore = recipeStore
+    this.production = new ProductionEngine(goodStore, recipeStore)
   }
 
   reset(): void {
@@ -223,117 +225,18 @@ export class AgentStore {
     if (!agentResult.ok) {
       return { ok: false, errors: [{ code: 'AGENT_NOT_FOUND' }] }
     }
-    const agent = agentResult.agent
 
-    const recipe = this.resolveRecipe(agent, recipeRef)
-    if (!recipe) {
-      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
-    }
-
-    const insufficient = this.insufficientInput(agent, recipe)
-    if (insufficient) return { ok: false, errors: [insufficient] }
-
-    const updated = new Agent(
-      agent.id,
-      agent.name,
-      this.composeInventory(agent, recipe),
-      agent.recipes,
-      agent.rules,
-      agent.recipesPerAction,
-    )
-    const index = this.agents.findIndex((a) => a.id === agent.id)
-    if (index !== -1) this.agents[index] = updated
-    return { ok: true, agent: updated }
-  }
-
-  /** Checks every input before the inventory is touched. */
-  private insufficientInput(agent: Agent, recipe: Recipe): ProductionError | null {
-    for (const line of recipe.inputs) {
-      const available = agent.quantityOf(line.goodId)
-      if (available < line.quantity) {
-        const good = this.goodStore.get(line.goodId)
-        return {
-          code: 'INSUFFICIENT_GOOD',
-          goodName: good.ok ? good.good.name : '',
-          required: line.quantity,
-          available,
-        }
-      }
-    }
-    return null
-  }
-
-  /** Applies the recipe: consumes inputs, adds outputs, drops emptied goods. */
-  private composeInventory(agent: Agent, recipe: Recipe): InventoryLine[] {
-    const quantities = new Map<string, number>()
-    const bump = (goodId: string, delta: number) =>
-      quantities.set(goodId, (quantities.get(goodId) ?? 0) + delta)
-
-    for (const line of agent.inventory) bump(line.goodId, line.quantity)
-    for (const line of recipe.inputs) bump(line.goodId, -line.quantity)
-    for (const line of recipe.outputs) bump(line.goodId, line.quantity)
-
-    // keep the first-appearance order of existing goods, then append new ones
-    const order: string[] = []
-    for (const line of agent.inventory) {
-      if (!order.includes(line.goodId)) order.push(line.goodId)
-    }
-    for (const line of recipe.outputs) {
-      if (!order.includes(line.goodId)) order.push(line.goodId)
-    }
-
-    return order
-      .map((goodId) => ({ goodId, quantity: quantities.get(goodId) ?? 0 }))
-      .filter((line) => line.quantity > 0)
+    const result = this.production.run(agentResult.agent, recipeRef)
+    if (result.ok) this.swapAgent(agentResult.agent.id, result.agent)
+    return result
   }
 
   /**
-   * Runs each agent's automatic rules up to its own `recipesPerAction` limit.
-   * `excludeAgentId` skips the possessed agent (null ⇒ nobody is skipped).
-   * Before every recipe the condition is re-evaluated against the fresh
-   * inventory, so a rule that no longer applies yields to the next priority
-   * and an agent with nothing executable stops early instead of looping.
+   * Runs each agent's automatic rules up to its own `recipesPerAction` limit,
+   * skipping the possessed agent when there is one.
    */
   runAutomaticRules(excludeAgentId: string | null): AutomaticProduction[] {
-    const executed: AutomaticProduction[] = []
-
-    // iterate over a copy: produce() replaces elements of this.agents
-    for (const agent of [...this.agents]) {
-      if (agent.id === excludeAgentId) continue
-
-      let done = 0
-      while (done < agent.recipesPerAction) {
-        // produce() swaps the agent object: re-read it on every round
-        const current = this.findById(agent.id)
-        if (!current.ok) break
-
-        const rule = this.runNextRule(current.agent)
-        if (rule === null) break // no material, condition unmet or recipe deleted
-
-        executed.push({ agentId: agent.id, ruleId: rule.id })
-        done++
-      }
-    }
-
-    return executed
-  }
-
-  /** Executes the highest-priority applicable rule; null when none can run. */
-  private runNextRule(agent: Agent): Rule | null {
-    for (const rule of applicableRules(agent)) {
-      const result = this.produce(agent.id, rule.recipeRef)
-      if (result.ok) return rule
-      // insufficient material or a deleted recipe: silently try the next rule
-    }
-    return null
-  }
-
-  private resolveRecipe(agent: Agent, recipeRef: Rule['recipeRef']): Recipe | null {
-    if (recipeRef.source === 'agent') {
-      return agent.recipes.find((recipe) => recipe.id === recipeRef.recipeId) ?? null
-    }
-    const result = this.recipeStore.findById(recipeRef.recipeId)
-    return result.ok ? result.recipe : null
+    return runAgentRules(this, excludeAgentId)
   }
 
   private validateRuleDraft(
@@ -354,7 +257,7 @@ export class AgentStore {
   }
 
   private ruleRecipeExists(agent: Agent, recipeRef: Rule['recipeRef']): boolean {
-    return this.resolveRecipe(agent, recipeRef) !== null
+    return resolveRecipe(agent, recipeRef, this.recipeStore) !== null
   }
 
   private validateDraft(draft: AgentDraft): AgentError[] {
@@ -385,30 +288,17 @@ export class AgentStore {
     return errors
   }
 
-  private replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {
-    const index = this.agents.findIndex((a) => a.id === agent.id)
+  /** Swaps the stored agent for an updated copy, keeping its position. */
+  private swapAgent(agentId: string, updated: Agent): void {
+    const index = this.agents.findIndex((a) => a.id === agentId)
     if (index === -1) return
+    this.agents[index] = updated
+  }
 
-    this.agents[index] = new Agent(
+  private replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {
+    this.swapAgent(
       agent.id,
-      agent.name,
-      agent.inventory,
-      recipes,
-      rules,
-      agent.recipesPerAction,
+      new Agent(agent.id, agent.name, agent.inventory, recipes, rules, agent.recipesPerAction),
     )
   }
 }
-
-export type {
-  Agent,
-  AgentDraft,
-  AgentError,
-  InventoryLine,
-  ProductionError,
-  ProductionResult,
-  Rule,
-  RuleCondition,
-  RuleError,
-  RuleRecipeRef,
-} from './agent'

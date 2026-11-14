@@ -1,7 +1,4 @@
-export type Good = {
-  id: string
-  name: string
-}
+import type { Good } from './good'
 
 export type RecipeLine = {
   goodId: string

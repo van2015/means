@@ -1,4 +1,5 @@
-import type { Good, GoodStore } from '@/domain/goodStore'
+import type { Good } from '@/domain/good'
+import type { GoodStore } from '@/domain/goodStore'
 import { Presenter } from './presenter'
 
 export class GoodPresenter extends Presenter {

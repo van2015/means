@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { RuleRecipeRef } from '@/domain/agentStore'
+import type { RuleRecipeRef } from '@/domain/agent'
 import type { Stores } from '@/domain/stores'
 import type { ActivationStrategy } from '@/domain/strategyStore'
 import { PlayModePresenter } from './playModePresenter'

@@ -1,5 +1,5 @@
 import type { RuleError, RuleRecipeRef } from '@/domain/agent'
-import type { Good } from '@/domain/goodStore'
+import type { Good } from '@/domain/good'
 import type { Recipe } from '@/domain/recipe'
 import { ValidationErrors } from './ValidationErrors'
 

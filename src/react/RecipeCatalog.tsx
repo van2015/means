@@ -1,5 +1,5 @@
-import type { Good } from '@/domain/goodStore'
-import type { Recipe } from '@/domain/recipeStore'
+import type { Good } from '@/domain/good'
+import type { Recipe } from '@/domain/recipe'
 import { goodName } from '@/presentation/catalogHelpers'
 
 type RecipeCatalogProps = {

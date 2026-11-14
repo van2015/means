@@ -1,5 +1,5 @@
 import type { AgentError } from '@/domain/agent'
-import type { Good } from '@/domain/goodStore'
+import type { Good } from '@/domain/good'
 import type { LineDraft, LineDraftField } from '@/presentation/lineDraft'
 import { RecipeLineForm } from './RecipeLineForm'
 import { ValidationErrors } from './ValidationErrors'

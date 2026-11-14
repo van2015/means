@@ -1,7 +1,5 @@
 import { generateId } from './id'
-import type { Good } from './recipe'
-
-export type { Good }
+import type { Good } from './good'
 
 type CreateGoodResult =
   { ok: true; good: Good } | { ok: false; error: 'EMPTY_NAME' | 'DUPLICATE_NAME' }

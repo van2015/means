@@ -1,5 +1,6 @@
-import type { Good, GoodStore } from '@/domain/goodStore'
-import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from '@/domain/recipeStore'
+import type { Good } from '@/domain/good'
+import type { GoodStore } from '@/domain/goodStore'
+import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from '@/domain/recipe'
 import { RecipeStore } from '@/domain/recipeStore'
 import { Presenter } from './presenter'
 import { createLineDraft, removeLineAt, type LineDraft, type LineDraftField } from './lineDraft'

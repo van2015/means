@@ -1,4 +1,4 @@
-import type { Good } from '@/domain/goodStore'
+import type { Good } from '@/domain/good'
 
 type GoodsSectionProps = {
   goodName: string

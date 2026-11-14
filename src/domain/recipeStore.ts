@@ -96,13 +96,3 @@ export class RecipeStore {
     return this.recipes.some((recipe) => recipe.name === name && recipe.id !== excludeId)
   }
 }
-
-export type {
-  DraftLine,
-  Good,
-  Recipe,
-  RecipeDraft,
-  RecipeError,
-  RecipeLine,
-  RecipeResult,
-} from './recipe'

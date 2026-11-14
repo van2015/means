@@ -1,6 +1,6 @@
-import type { Rule } from '@/domain/agentStore'
-import type { Good } from '@/domain/goodStore'
-import type { Recipe } from '@/domain/recipeStore'
+import type { Rule } from '@/domain/agent'
+import type { Good } from '@/domain/good'
+import type { Recipe } from '@/domain/recipe'
 
 export function goodName(goods: Good[], goodId: string): string {
   return goods.find((good) => good.id === goodId)?.name ?? ''

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Agent, RuleRecipeRef } from '@/domain/agent'
-import type { Recipe } from '@/domain/recipeStore'
+import type { Recipe } from '@/domain/recipe'
 import { operatorLabel } from '@/presentation/catalogHelpers'
 
 type GoodName = (goodId: string) => string

@@ -1,4 +1,4 @@
-import type { Good } from '@/domain/goodStore'
+import type { Good } from '@/domain/good'
 import type { RecipeError } from '@/domain/recipe'
 import type { LineDraft, LineDraftField } from '@/presentation/lineDraft'
 import { RecipeLineForm } from './RecipeLineForm'

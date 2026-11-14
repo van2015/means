@@ -1,6 +1,5 @@
-import type { DraftLine, Good } from './recipe'
-
-import type { Recipe } from './recipe'
+import type { Good } from './good'
+import type { DraftLine, Recipe } from './recipe'
 
 export type InventoryLine = {
   goodId: string
