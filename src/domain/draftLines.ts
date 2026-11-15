@@ -1,11 +1,10 @@
 import type { GoodStore } from './goodStore'
-import type { DraftLine, Recipe, RecipeDraft, RecipeLine } from './recipe'
-import { createRecipeEntity } from './recipe'
+import { type DraftLine, Recipe, type RecipeDraft, type RecipeLine } from './recipe'
 
-export type UnknownGoodError = { code: 'UNKNOWN_GOOD'; goodName: string }
+type UnknownGoodError = { code: 'UNKNOWN_GOOD'; goodName: string }
 
 /** Resolves a draft good name to its id, failing loudly when it is missing. */
-export function goodIdFor(goodStore: GoodStore, name: string): string {
+function goodIdFor(goodStore: GoodStore, name: string): string {
   const result = goodStore.findIdByName(name)
   if (!result.ok) {
     throw new Error(`Unexpected missing good: ${name}`)
@@ -23,7 +22,7 @@ export function resolveDraftLines(goodStore: GoodStore, lines: DraftLine[]): Rec
 
 /** Builds a recipe entity out of a draft, resolving good names to ids. */
 export function buildRecipeFromDraft(goodStore: GoodStore, id: string, draft: RecipeDraft): Recipe {
-  return createRecipeEntity(
+  return new Recipe(
     id,
     draft.name,
     resolveDraftLines(goodStore, draft.inputs),

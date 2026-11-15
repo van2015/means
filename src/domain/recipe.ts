@@ -72,12 +72,3 @@ export function validateRecipe(
 
   return errors
 }
-
-export function createRecipeEntity(
-  id: string,
-  name: string,
-  inputs: RecipeLine[],
-  outputs: RecipeLine[],
-): Recipe {
-  return new Recipe(id, name, inputs, outputs)
-}
