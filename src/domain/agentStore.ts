@@ -9,13 +9,13 @@ import type {
   RuleCondition,
   RuleError,
 } from './agent'
-import { validateRecipe } from './recipe'
-import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
-import { buildRecipeFromDraft, resolveDraftLines, unknownGoodLineErrors } from './draftLines'
+import type { Recipe, RecipeDraft, RecipeResult } from './recipe'
+import { resolveDraftLines, unknownGoodLineErrors } from './draftLines'
 import { ProductionEngine } from './production'
 import { resolveRecipe } from './recipeRef'
 import { applicableRules } from './ruleEngine'
 import { runAutomaticRules as runAgentRules, type AutomaticProduction } from './automaticRules'
+import { AgentEditor } from './agentEditor'
 import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
 
@@ -30,11 +30,13 @@ export class AgentStore {
   private goodStore: GoodStore
   private recipeStore: RecipeStore
   private production: ProductionEngine
+  private editor: AgentEditor
 
   constructor(goodStore: GoodStore, recipeStore: RecipeStore) {
     this.goodStore = goodStore
     this.recipeStore = recipeStore
     this.production = new ProductionEngine(goodStore, recipeStore)
+    this.editor = new AgentEditor(this, goodStore)
   }
 
   reset(): void {
@@ -88,51 +90,15 @@ export class AgentStore {
   }
 
   addRecipe(agentId: string, draft: RecipeDraft): RecipeResult {
-    const agentResult = this.findById(agentId)
-    if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
-    }
-
-    const errors = this.validateRecipeDraft(draft, agentResult.agent)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
-    const recipe = buildRecipeFromDraft(this.goodStore, generateId(), draft)
-    const updatedRecipes = [...agentResult.agent.recipes, recipe]
-    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
-    return { ok: true, recipe }
+    return this.editor.addRecipe(agentId, draft)
   }
 
   updateRecipe(agentId: string, recipeId: string, draft: RecipeDraft): RecipeResult {
-    const agentResult = this.findById(agentId)
-    if (!agentResult.ok) {
-      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
-    }
-
-    const index = agentResult.agent.recipes.findIndex((recipe) => recipe.id === recipeId)
-    if (index === -1) {
-      return { ok: false, errors: [{ code: 'RECIPE_NOT_FOUND' }] }
-    }
-
-    const errors = this.validateRecipeDraft(draft, agentResult.agent, recipeId)
-    if (errors.length > 0) {
-      return { ok: false, errors }
-    }
-
-    const recipe = buildRecipeFromDraft(this.goodStore, recipeId, draft)
-    const updatedRecipes = [...agentResult.agent.recipes]
-    updatedRecipes[index] = recipe
-    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
-    return { ok: true, recipe }
+    return this.editor.updateRecipe(agentId, recipeId, draft)
   }
 
   deleteRecipe(agentId: string, recipeId: string): void {
-    const agentResult = this.findById(agentId)
-    if (!agentResult.ok) return
-
-    const updatedRecipes = agentResult.agent.recipes.filter((recipe) => recipe.id !== recipeId)
-    this.replaceAgent(agentResult.agent, updatedRecipes, agentResult.agent.rules)
+    this.editor.deleteRecipe(agentId, recipeId)
   }
 
   addRule(
@@ -291,21 +257,18 @@ export class AgentStore {
     return this.agents.some((agent) => agent.name === name && agent.id !== excludeId)
   }
 
-  private validateRecipeDraft(
-    draft: RecipeDraft,
-    agent: Agent,
-    excludeRecipeId?: string,
-  ): RecipeError[] {
-    const errors: RecipeError[] = [
-      ...validateRecipe(draft.name, draft.inputs, draft.outputs),
-      ...unknownGoodLineErrors(this.goodStore, [...draft.inputs, ...draft.outputs]),
-    ]
-    if (
-      agent.recipes.some((recipe) => recipe.name === draft.name && recipe.id !== excludeRecipeId)
-    ) {
-      errors.push({ code: 'RECIPE_NAME_EXISTS' })
-    }
-    return errors
+  /** The agent the editor works on, or null when it does not exist. */
+  agentOrNull(agentId: string): Agent | null {
+    const found = this.findById(agentId)
+    return found.ok ? found.agent : null
+  }
+
+  /** Swaps the stored agent for a copy carrying the given recipes and rules. */
+  replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {
+    this.swapAgent(
+      agent.id,
+      new Agent(agent.id, agent.name, agent.inventory, recipes, rules, agent.recipesPerAction),
+    )
   }
 
   /** Swaps the stored agent for an updated copy, keeping its position. */
@@ -313,12 +276,5 @@ export class AgentStore {
     const index = this.agents.findIndex((a) => a.id === agentId)
     if (index === -1) return
     this.agents[index] = updated
-  }
-
-  private replaceAgent(agent: Agent, recipes: Recipe[], rules: Rule[]): void {
-    this.swapAgent(
-      agent.id,
-      new Agent(agent.id, agent.name, agent.inventory, recipes, rules, agent.recipesPerAction),
-    )
   }
 }
