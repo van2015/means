@@ -56,12 +56,4 @@ export class GoodStore {
     this.goods.push(created)
     return { ok: true, good: created }
   }
-
-  require(name: string): FindGoodResult {
-    const good = this.goods.find((g) => g.name === name)
-    if (good === undefined) {
-      return { ok: false, error: 'GOOD_NOT_FOUND' }
-    }
-    return { ok: true, good }
-  }
 }

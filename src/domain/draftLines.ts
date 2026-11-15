@@ -6,11 +6,11 @@ export type UnknownGoodError = { code: 'UNKNOWN_GOOD'; goodName: string }
 
 /** Resolves a draft good name to its id, failing loudly when it is missing. */
 export function goodIdFor(goodStore: GoodStore, name: string): string {
-  const result = goodStore.require(name)
+  const result = goodStore.findIdByName(name)
   if (!result.ok) {
     throw new Error(`Unexpected missing good: ${name}`)
   }
-  return result.good.id
+  return result.id
 }
 
 /** Maps draft lines (good names) onto entity lines (good ids). */
@@ -38,8 +38,9 @@ export function unknownGoodLineErrors(
 ): UnknownGoodError[] {
   const errors: UnknownGoodError[] = []
   for (const line of lines) {
-    const result = goodStore.require(line.goodName)
-    if (!result.ok) errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
+    if (!goodStore.findIdByName(line.goodName).ok) {
+      errors.push({ code: 'UNKNOWN_GOOD', goodName: line.goodName })
+    }
   }
   return errors
 }
