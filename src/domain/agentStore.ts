@@ -14,6 +14,7 @@ import type { Recipe, RecipeDraft, RecipeError, RecipeResult } from './recipe'
 import { buildRecipeFromDraft, resolveDraftLines, unknownGoodLineErrors } from './draftLines'
 import { ProductionEngine } from './production'
 import { resolveRecipe } from './recipeRef'
+import { applicableRules } from './ruleEngine'
 import { runAutomaticRules as runAgentRules, type AutomaticProduction } from './automaticRules'
 import type { GoodStore } from './goodStore'
 import type { RecipeStore } from './recipeStore'
@@ -237,6 +238,25 @@ export class AgentStore {
    */
   runAutomaticRules(excludeAgentId: string | null): AutomaticProduction[] {
     return runAgentRules(this, excludeAgentId)
+  }
+
+  /** Every stored agent but the excluded one, snapshotted for this pass. */
+  runnableAgents(excludeAgentId: string | null): Agent[] {
+    return this.agents.filter((agent) => agent.id !== excludeAgentId)
+  }
+
+  /** Executes the agent's highest-priority applicable rule; null when none runs. */
+  runNextRule(agentId: string): Rule | null {
+    const found = this.findById(agentId)
+    if (!found.ok) return null
+
+    for (const rule of applicableRules(found.agent)) {
+      // produce() swaps the stored agent, so each attempt re-reads it
+      const result = this.produce(agentId, rule.recipeRef)
+      if (result.ok) return rule
+      // insufficient material or a deleted recipe: silently try the next rule
+    }
+    return null
   }
 
   private validateRuleDraft(

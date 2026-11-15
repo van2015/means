@@ -1,8 +1,18 @@
 import type { Agent, Rule } from './agent'
-import { applicableRules } from './ruleEngine'
-import type { AgentStore } from './agentStore'
 
 export type AutomaticProduction = { agentId: string; ruleId: string }
+
+/**
+ * The store operations the automatic-rule pass needs. Declared here instead of
+ * importing `AgentStore`, so the store can depend on this orchestrator without
+ * the two modules depending on each other. `AgentStore` satisfies it.
+ */
+export type RuleRunner = {
+  /** Every stored agent but the excluded one, snapshotted for this pass. */
+  runnableAgents(excludeAgentId: string | null): Agent[]
+  /** Executes the agent's highest-priority applicable rule; null when none runs. */
+  runNextRule(agentId: string): Rule | null
+}
 
 /**
  * Runs each agent's automatic rules up to its own `recipesPerAction` limit.
@@ -12,44 +22,27 @@ export type AutomaticProduction = { agentId: string; ruleId: string }
  * and an agent with nothing executable stops early instead of looping.
  */
 export function runAutomaticRules(
-  store: AgentStore,
+  runner: RuleRunner,
   excludeAgentId: string | null,
 ): AutomaticProduction[] {
   const executed: AutomaticProduction[] = []
 
-  // iterate over a copy: produce() replaces elements of the store
-  for (const agent of [...store.all()]) {
-    if (agent.id === excludeAgentId) continue
-    executed.push(...runAgentRules(store, agent))
+  for (const agent of runner.runnableAgents(excludeAgentId)) {
+    executed.push(...runAgentRules(runner, agent))
   }
 
   return executed
 }
 
 /** Runs one agent's rules until its budget or its material runs out. */
-function runAgentRules(store: AgentStore, agent: Agent): AutomaticProduction[] {
+function runAgentRules(runner: RuleRunner, agent: Agent): AutomaticProduction[] {
   const executed: AutomaticProduction[] = []
-  let done = 0
-  while (done < agent.recipesPerAction) {
-    // produce() swaps the agent object: re-read it on every round
-    const current = store.findById(agent.id)
-    if (!current.ok) break
 
-    const rule = runNextRule(store, current.agent)
+  for (let done = 0; done < agent.recipesPerAction; done++) {
+    const rule = runner.runNextRule(agent.id)
     if (rule === null) break // no material, condition unmet or recipe deleted
-
     executed.push({ agentId: agent.id, ruleId: rule.id })
-    done++
   }
-  return executed
-}
 
-/** Executes the highest-priority applicable rule; null when none can run. */
-function runNextRule(store: AgentStore, agent: Agent): Rule | null {
-  for (const rule of applicableRules(agent)) {
-    const result = store.produce(agent.id, rule.recipeRef)
-    if (result.ok) return rule
-    // insufficient material or a deleted recipe: silently try the next rule
-  }
-  return null
+  return executed
 }
