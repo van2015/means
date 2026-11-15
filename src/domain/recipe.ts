@@ -1,5 +1,3 @@
-import type { Good } from './good'
-
 export type RecipeLine = {
   goodId: string
   quantity: number
@@ -38,22 +36,6 @@ export class Recipe {
     this.name = name
     this.inputs = inputs
     this.outputs = outputs
-  }
-
-  consumes(good: Good, quantity: number): boolean {
-    return this.inputs.some((line) => line.goodId === good.id && line.quantity === quantity)
-  }
-
-  produces(good: Good, quantity: number): boolean {
-    return this.outputs.some((line) => line.goodId === good.id && line.quantity === quantity)
-  }
-
-  usesGoodAsInput(goodId: string): boolean {
-    return this.inputs.some((line) => line.goodId === goodId)
-  }
-
-  usesGoodAsOutput(goodId: string): boolean {
-    return this.outputs.some((line) => line.goodId === goodId)
   }
 }
 

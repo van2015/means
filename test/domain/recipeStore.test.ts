@@ -35,15 +35,8 @@ describe('RecipeStore', () => {
 
     if (!recipe || !flourResult.ok || !breadResult.ok) return
 
-    const flourResult2 = goodStore.get(flourResult.id)
-    const breadResult2 = goodStore.get(breadResult.id)
-    expect(flourResult2.ok).toBe(true)
-    expect(breadResult2.ok).toBe(true)
-
-    if (!flourResult2.ok || !breadResult2.ok) return
-
-    expect(recipe.consumes(flourResult2.good, 2)).toBe(true)
-    expect(recipe.produces(breadResult2.good, 1)).toBe(true)
+    expect(recipe.inputs).toEqual([{ goodId: flourResult.id, quantity: 2 }])
+    expect(recipe.outputs).toEqual([{ goodId: breadResult.id, quantity: 1 }])
   })
 
   it('rejects a recipe without inputs', () => {
@@ -235,14 +228,8 @@ describe('RecipeStore', () => {
 
     if (!flourResult.ok || !breadResult.ok) return
 
-    const flourResult2 = goodStore.get(flourResult.id)
-    const breadResult2 = goodStore.get(breadResult.id)
-    expect(flourResult2.ok).toBe(true)
-    expect(breadResult2.ok).toBe(true)
-    if (!flourResult2.ok || !breadResult2.ok) return
-
-    expect(result.recipe.consumes(flourResult2.good, 3)).toBe(true)
-    expect(result.recipe.produces(breadResult2.good, 1)).toBe(true)
+    expect(result.recipe.inputs).toEqual([{ goodId: flourResult.id, quantity: 3 }])
+    expect(result.recipe.outputs).toEqual([{ goodId: breadResult.id, quantity: 1 }])
 
     const catalogRecipeResult = store.findByName('Pan integral')
     expect(catalogRecipeResult.ok).toBe(true)
@@ -314,7 +301,7 @@ describe('RecipeStore', () => {
 
     if (!producerResult.ok || !consumerResult.ok || !flourResult.ok) return
 
-    expect(producerResult.recipe.usesGoodAsOutput(flourResult.id)).toBe(true)
-    expect(consumerResult.recipe.usesGoodAsInput(flourResult.id)).toBe(true)
+    expect(producerResult.recipe.outputs.map((line) => line.goodId)).toContain(flourResult.id)
+    expect(consumerResult.recipe.inputs.map((line) => line.goodId)).toContain(flourResult.id)
   })
 })

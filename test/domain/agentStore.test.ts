@@ -42,15 +42,8 @@ describe('AgentStore', () => {
 
     if (!flourResult.ok || !breadResult.ok) return
 
-    const flourResult2 = goodStore.get(flourResult.id)
-    const breadResult2 = goodStore.get(breadResult.id)
-    expect(flourResult2.ok).toBe(true)
-    expect(breadResult2.ok).toBe(true)
-
-    if (!flourResult2.ok || !breadResult2.ok) return
-
-    expect(agent.has(flourResult2.good, 10)).toBe(true)
-    expect(agent.has(breadResult2.good, 5)).toBe(true)
+    expect(agent.quantityOf(flourResult.id)).toBe(10)
+    expect(agent.quantityOf(breadResult.id)).toBe(5)
   })
 
   it('rejects an agent with an empty name and leaves catalog unchanged', () => {

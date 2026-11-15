@@ -1,4 +1,3 @@
-import type { Good } from './good'
 import type { DraftLine, Recipe } from './recipe'
 
 export type InventoryLine = {
@@ -84,10 +83,6 @@ export class Agent {
     this.recipes = recipes
     this.rules = rules
     this.recipesPerAction = recipesPerAction
-  }
-
-  has(good: Good, quantity: number): boolean {
-    return this.inventory.some((line) => line.goodId === good.id && line.quantity === quantity)
   }
 
   quantityOf(goodId: string): number {
