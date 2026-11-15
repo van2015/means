@@ -52,6 +52,8 @@ export type RuleError =
   | { code: 'AGENT_NOT_FOUND' }
   | { code: 'RULE_NOT_FOUND' }
 
+export type RuleResult = { ok: true; rule: Rule } | { ok: false; errors: RuleError[] }
+
 export type ProductionError =
   | { code: 'AGENT_NOT_FOUND' }
   | { code: 'RECIPE_NOT_FOUND' }
